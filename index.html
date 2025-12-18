@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiscoSphere Pro - Ultimate UI</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'tech': ['Rajdhani', 'sans-serif'],
+                        'display': ['Syncopate', 'sans-serif'],
+                    },
+                    colors: {
+                        'cyber-black': '#050508',
+                        'cyber-glass': 'rgba(10, 15, 30, 0.65)',
+                        'cyber-blue': '#00f3ff',
+                        'cyber-pink': '#bc13fe',
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(0, 243, 255, 0.15)',
+                        'glow-active': '0 0 30px rgba(0, 243, 255, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- GLOBAL & ANIMATIONS --- */
+        body {
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(20, 20, 40, 0.4) 0%, #000 100%),
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+        }
+
+        /* Effet de verre ultra-premium */
+        .glass-panel {
+            background: var(--cyber-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Ligne lumineuse en haut des panels */
+        .glass-panel::before {
+            content: '';
+            position: absolute; top: 0; left: 0; width: 100%; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.5), transparent);
+        }
+
+        /* Coins coupés (Tech look) */
+        .cut-corner {
+            clip-path: polygon(
+                10px 0, 100% 0, 
+                100% calc(100% - 10px), calc(100% - 10px) 100%, 
+                0 100%, 0 10px
+            );
+        }
+
+        /* Texte Glitch au survol */
+        .hover-glitch:hover {
+            animation: glitch-text 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: #00f3ff;
+        }
+        @keyframes glitch-text {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        /* --- HOLOGRAMME --- */
+        .holo-frame {
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(0, 10, 20, 0.9);
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.1);
+        }
+        .holo-scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 243, 255, 0.02) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .holo-beam {
+            position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+            background: #00f3ff;
+            box-shadow: 0 0 10px #00f3ff;
+            opacity: 0.5;
+            animation: scan-beam 3s linear infinite;
+        }
+        @keyframes scan-beam { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+        /* --- UI ELEMENTS --- */
+        .btn-tech {
+            position: relative;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .btn-tech:hover {
+            background: rgba(0, 243, 255, 0.1);
+            border-color: #00f3ff;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+        .btn-tech.active {
+            background: #00f3ff;
+            color: #000;
+            border-color: #00f3ff;
+            font-weight: bold;
+        }
+
+        .theme-selector-item {
+            transition: all 0.4s ease;
+            border: 1px solid transparent;
+        }
+        .theme-selector-item:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* --- SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    </style>
+</head>
+<body class="font-tech text-gray-200">
+
+    <div id="themeScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-700 bg-black/90 backdrop-blur-sm">
+        
+        <div class="text-center mb-16 relative">
+            <h1 class="font-display text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyber-blue via-white to-cyber-pink tracking-widest mb-4 filter drop-shadow-[0_0_10px_rgba(0,243,255,0.5)]">
+                DISCOSPHERE
+            </h1>
+            <div class="h-px w-32 bg-gradient-to-r from-transparent via-cyber-blue to-transparent mx-auto"></div>
+            <p class="mt-4 text-cyan-400/70 tracking-[0.5em] text-sm uppercase">Interactive Sonic Visualizer v2.0</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl px-6 w-full mb-16">
+            
+            <div onclick="selectTheme('neon')" class="theme-selector-item group cursor-pointer glass-panel p-8 rounded-xl text-center relative">
+                <div class="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full border border-purple-500/30 flex items-center justify-center group-hover:border-purple-500 group-hover:shadow-[0_0_20px_#bc13fe] transition-all">
+                    <i class="fas fa-bolt text-2xl text-purple-400"></i>
+                </div>
+                <h3 class="font-display text-xl mb-2 text-white">NEON 80s</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Esthétique Retrowave, couleurs vibrantes et géométrie lumineuse.</p>
+            </div>
+
+            <div onclick="selectTheme('cyber')" class="theme-selector-item group cursor-pointer glass-panel p-8 rounded-xl text-center relative">
+                <div class="absolute inset-0 bg-gradient-to-b from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full border border-cyan-500/30 flex items-center justify-center group-hover:border-cyan-500 group-hover:shadow-[0_0_20px_#00f3ff] transition-all">
+                    <i class="fas fa-microchip text-2xl text-cyan-400"></i>
+                </div>
+                <h3 class="font-display text-xl mb-2 text-white">CYBERPUNK</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Atmosphère sombre, high-tech, néons bleus glacials et données brutes.</p>
+            </div>
+
+            <div onclick="selectTheme('synth')" class="theme-selector-item group cursor-pointer glass-panel p-8 rounded-xl text-center relative">
+                <div class="absolute inset-0 bg-gradient-to-b from-pink-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full border border-pink-500/30 flex items-center justify-center group-hover:border-pink-500 group-hover:shadow-[0_0_20px_#ff0080] transition-all">
+                    <i class="fas fa-wave-square text-2xl text-pink-400"></i>
+                </div>
+                <h3 class="font-display text-xl mb-2 text-white">SYNTHWAVE</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Couchers de soleil digitaux, grilles laser et nostalgie analogique.</p>
+            </div>
+
+            <div onclick="selectTheme('matrix')" class="theme-selector-item group cursor-pointer glass-panel p-8 rounded-xl text-center relative">
+                <div class="absolute inset-0 bg-gradient-to-b from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="w-16 h-16 mx-auto mb-6 rounded-full border border-green-500/30 flex items-center justify-center group-hover:border-green-500 group-hover:shadow-[0_0_20px_#00ff00] transition-all">
+                    <i class="fas fa-terminal text-2xl text-green-400"></i>
+                </div>
+                <h3 class="font-display text-xl mb-2 text-white">MATRIX</h3>
+                <p class="text-xs text-gray-400 leading-relaxed">Code binaire, simulation verte et réalité numérique.</p>
+            </div>
+        </div>
+
+        <button onclick="startExperience()" class="group relative px-16 py-5 overflow-hidden rounded-full bg-transparent border border-cyber-blue/50 hover:border-cyber-blue transition-all duration-300">
+            <div class="absolute inset-0 w-0 bg-cyber-blue/20 transition-all duration-[250ms] ease-out group-hover:w-full"></div>
+            <span class="relative font-display font-bold tracking-widest text-lg text-white group-hover:text-cyber-blue">INITIALISER LE SYSTÈME</span>
+        </button>
+    </div>
+
+    <div id="mainInterface" class="hidden fixed inset-0 z-0">
+        
+        <div id="canvasContainer" class="absolute inset-0 z-0"></div>
+
+        <div class="absolute top-8 left-8 z-20 w-80">
+            <div class="glass-panel cut-corner p-6">
+                <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+                    <h2 class="font-display text-lg text-cyber-blue tracking-wider">STATUS</h2>
+                    <span class="animate-pulse w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#00ff00]"></span>
+                </div>
+                <div class="space-y-4 font-mono text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">ÉCRANS ACTIFS</span>
+                        <span id="screenCount" class="text-white font-bold text-lg">130</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">FRAMERATE</span>
+                        <span id="fpsCounter" class="text-cyber-pink font-bold">60 FPS</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-400">PROJECTIONS</span>
+                        <span id="activeVideos" class="text-cyber-blue font-bold">0</span>
+                    </div>
+                </div>
+                <div class="mt-4 pt-2 border-t border-white/5">
+                    <p id="themeDisplay" class="text-xs text-gray-500 uppercase tracking-widest text-right">SYSTEM READY</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+            <div class="glass-panel rounded-full px-2 py-2 flex space-x-2" id="yearFilters">
+                </div>
+        </div>
+
+        <div id="hologram" class="hidden absolute top-1/2 right-10 transform -translate-y-1/2 z-30 w-[500px]">
+            <div class="relative">
+                <div class="absolute -left-10 top-1/2 w-10 h-px bg-cyber-blue/50"></div>
+                <div class="absolute -left-10 top-1/2 w-2 h-2 -mt-1 bg-cyber-blue rounded-full shadow-[0_0_10px_#00f3ff]"></div>
+
+                <div class="holo-frame cut-corner p-1 relative overflow-hidden backdrop-blur-xl">
+                    <div class="holo-scanline"></div>
+                    <div class="holo-beam"></div>
+                    
+                    <div class="flex justify-between items-center bg-black/60 px-4 py-2 mb-1 border-b border-white/10">
+                        <div class="flex flex-col">
+                            <h3 id="hologramTitle" class="font-display text-xs text-cyber-blue uppercase truncate w-64">TITLE</h3>
+                            <span id="hologramYear" class="text-[10px] text-gray-400 font-mono">YEAR 0000</span>
+                        </div>
+                        <button onclick="closeHologram()" class="text-gray-500 hover:text-red-500 transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="relative aspect-video bg-black border border-white/5">
+                        <div id="videoPlayer" class="w-full h-full"></div>
+                    </div>
+
+                    <div class="px-4 py-2 bg-black/80 flex justify-between items-center">
+                         <span class="text-[10px] text-cyber-pink font-mono animate-pulse">● TRANSMISSION LIVE</span>
+                         <p id="hologramDescription" class="text-[10px] text-gray-500 uppercase tracking-wider">Source: YouTube Data</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-3xl px-4">
+            <div class="glass-panel rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-6">
+                
+                <div class="flex items-center gap-4">
+                    <button id="toggleRotation" onclick="toggleRotation()" class="btn-tech w-12 h-12 flex items-center justify-center rounded-full text-cyber-blue">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button onclick="resetCamera()" class="btn-tech w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-white">
+                        <i class="fas fa-compress-arrows-alt"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 w-full px-4 border-l border-r border-white/10 flex items-center gap-4">
+                    <span class="text-xs font-mono text-gray-400 uppercase">Rotation</span>
+                    <input type="range" id="speedControl" min="0.1" max="3" step="0.1" value="1" oninput="changeSpeed(this.value)" 
+                           class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyber-blue hover:accent-cyber-pink transition-all">
+                    <span id="speedValue" class="text-xs font-mono text-cyber-blue w-12 text-right">1.0x</span>
+                </div>
+
+                <button onclick="changeTheme()" class="btn-tech px-6 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                    <i class="fas fa-layer-group"></i> THEMES
+                </button>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DONNÉES & CONFIGURATION (Identique à votre demande) ---
+        const videoPlaylist = [
+            // Années 1970
+            {id: "3JWTaaS7LdU", title: "Bee Gees - Stayin' Alive", year: "1977", decade: "1970s", color: "#FF6B6B"},
+            {id: "fNFzfwLM72c", title: "Queen - Bohemian Rhapsody", year: "1975", decade: "1970s", color: "#4ECDC4"},
+            {id: "rY0WxgSXdEE", title: "ABBA - Dancing Queen", year: "1976", decade: "1970s", color: "#FFD166"},
+            {id: "I_izvAbhExY", title: "Donna Summer - Hot Stuff", year: "1979", decade: "1970s", color: "#06D6A0"},
+            
+            // Années 1980
+            {id: "dQw4w9WgXcQ", title: "Rick Astley - Never Gonna Give You Up", year: "1987", decade: "1980s", color: "#EF476F"},
+            {id: "ZBR2G3I2C2M", title: "Michael Jackson - Billie Jean", year: "1983", decade: "1980s", color: "#FFD166"},
+            {id: "ejorQVy3m8E", title: "Madonna - Like a Virgin", year: "1984", decade: "1980s", color: "#06D6A0"},
+            
+            // Années 1990
+            {id: "CduA0TULnow", title: "Backstreet Boys - I Want It That Way", year: "1999", decade: "1990s", color: "#EF476F"},
+            {id: "GjnclG6X1_I", title: "Britney Spears - Baby One More Time", year: "1998", decade: "1990s", color: "#118AB2"},
+            {id: "79fzeNUqQbQ", title: "TLC - No Scrubs", year: "1999", decade: "1990s", color: "#FFD166"},
+            {id: "H5NqIsnyTG8", title: "Spice Girls - Wannabe", year: "1996", decade: "1990s", color: "#06D6A0"},
+            {id: "hTWKbfoikeg", title: "Nirvana - Smells Like Teen Spirit", year: "1991", decade: "1990s", color: "#118AB2"},
+            
+            // Années 2000
+            {id: "kfVsfOSbJY0", title: "Rihanna - Umbrella", year: "2007", decade: "2000s", color: "#EF476F"},
+            {id: "8UVNT4wvIGY", title: "Beyoncé - Single Ladies", year: "2008", decade: "2000s", color: "#118AB2"},
+            {id: "gGdGFtwCNBE", title: "Lady Gaga - Poker Face", year: "2008", decade: "2000s", color: "#FFD166"},
+            {id: "PT2_F-1esPk", title: "OutKast - Hey Ya!", year: "2003", decade: "2000s", color: "#06D6A0"},
+            
+            // Années 2010
+            {id: "OPf0YbXqDm0", title: "Mark Ronson ft. Bruno Mars - Uptown Funk", year: "2014", decade: "2010s", color: "#EF476F"},
+            {id: "pRpeEdMmmQ0", title: "Taylor Swift - Shake It Off", year: "2014", decade: "2010s", color: "#118AB2"},
+            {id: "JGwWNGJdvx8", title: "Ed Sheeran - Shape of You", year: "2017", decade: "2010s", color: "#FFD166"},
+            {id: "kJQP7kiw5Fk", title: "Luis Fonsi - Despacito", year: "2017", decade: "2010s", color: "#06D6A0"},
+            
+            // Années 2020
+            {id: "mP0VHJYFOAU", title: "The Weeknd - Blinding Lights", year: "2020", decade: "2020s", color: "#EF476F"},
+            {id: "nr3HY6LpG5c", title: "Dua Lipa - Levitating", year: "2020", decade: "2020s", color: "#118AB2"},
+            {id: "5e3WX-NiK9M", title: "Harry Styles - As It Was", year: "2022", decade: "2020s", color: "#FFD166"},
+            {id: "jfKfPfyJRdk", title: "Lofi Girl - lofi hip hop radio", year: "2022", decade: "2020s", color: "#06D6A0"}
+        ];
+
+        // Thèmes
+        const themes = {
+            neon: {
+                name: "NÉON 80's",
+                ambientColor: 0x330033,
+                lightColor: 0xFF00FF,
+                particleColors: [0xFF00FF, 0x00FFFF, 0xFFFF00, 0xFF0080],
+                backgroundColor: "#0a0a1a",
+                emissiveIntensity: 1.5
+            },
+            cyber: {
+                name: "CYBERPUNK 2077",
+                ambientColor: 0x003333,
+                lightColor: 0x00FFFF,
+                particleColors: [0x00FFFF, 0x0080FF, 0x8000FF, 0x00FF80],
+                backgroundColor: "#0a1a2a",
+                emissiveIntensity: 1.2
+            },
+            synth: {
+                name: "SYNTHWAVE",
+                ambientColor: 0x330033,
+                lightColor: 0xFF0080,
+                particleColors: [0xFF0080, 0xFF8000, 0x00FF80, 0x8000FF],
+                backgroundColor: "#1a0a2a",
+                emissiveIntensity: 1.3
+            },
+            matrix: {
+                name: "MATRIX",
+                ambientColor: 0x003300,
+                lightColor: 0x00FF00,
+                particleColors: [0x00FF00, 0x00CC00, 0x009900, 0x006600],
+                backgroundColor: "#0a1a0a",
+                emissiveIntensity: 1.0
+            }
+        };
+
+        // Variables globales
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let discoSphere, animatedMeshes = [];
+        let isRotating = true;
+        let rotationSpeed = 0.005;
+        let currentTheme = 'neon';
+        let currentDecadeFilter = null;
+        let lastFrameTime = 0;
+        let frameCount = 0;
+        let fps = 60;
+        let activeVideoCount = 0;
+
+        // Sélection du thème
+        function selectTheme(theme) {
+            currentTheme = theme;
+            // Mise à jour visuelle des cartes thème (si nécessaire)
+        }
+
+        // Démarrer l'expérience
+        function startExperience() {
+            document.getElementById('themeScreen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('themeScreen').style.display = 'none';
+                document.getElementById('mainInterface').style.display = 'block';
+                document.getElementById('themeDisplay').textContent = themes[currentTheme].name;
+                initThreeJS();
+                setupUI();
+                animate();
+            }, 800);
+        }
+
+        // Initialiser Three.js
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(themes[currentTheme].backgroundColor, 10, 50);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 8;
+
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvasContainer').appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.5;
+            controls.maxDistance = 20;
+            controls.minDistance = 4;
+
+            const ambientLight = new THREE.AmbientLight(themes[currentTheme].ambientColor, 0.4);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(themes[currentTheme].lightColor, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            createFibonacciSphere();
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            setupEventListeners();
+        }
+
+        function createFibonacciSphere() {
+            discoSphere = new THREE.Group();
+            animatedMeshes = [];
+
+            const totalScreens = 130;
+            const radius = 3.6;
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.crossOrigin = "anonymous";
+
+            for (let i = 0; i < totalScreens; i++) {
+                const phi = Math.acos(-1 + (2 * i) / totalScreens);
+                const theta = Math.sqrt(totalScreens * Math.PI) * phi;
+                const x = radius * Math.cos(theta) * Math.sin(phi);
+                const y = radius * Math.sin(theta) * Math.sin(phi);
+                const z = radius * Math.cos(phi);
+
+                const videoData = videoPlaylist[i % videoPlaylist.length];
+                const geometry = new THREE.PlaneGeometry(0.45, 0.6);
+
+                const frames = [];
+                for (let f = 0; f < 3; f++) {
+                    const frameUrl = `https://img.youtube.com/vi/${videoData.id}/${f + 1}.jpg`;
+                    frames.push(textureLoader.load(frameUrl));
+                }
+
+                const material = new THREE.MeshPhongMaterial({
+                    map: frames[0],
+                    side: THREE.DoubleSide,
+                    emissive: parseInt(videoData.color.replace('#', '0x'), 16),
+                    emissiveIntensity: themes[currentTheme].emissiveIntensity * 0.3,
+                    shininess: 50,
+                    transparent: true,
+                    opacity: 0.95
+                });
+
+                const screen = new THREE.Mesh(geometry, material);
+                screen.position.set(x, y, z);
+                screen.lookAt(x * 2, y * 2, z * 2);
+
+                screen.userData = {
+                    id: videoData.id,
+                    title: videoData.title,
+                    year: videoData.year,
+                    decade: videoData.decade,
+                    color: videoData.color,
+                    frames: frames,
+                    frameIndex: 0,
+                    lastFrameUpdate: Date.now() + Math.random() * 1000
+                };
+
+                discoSphere.add(screen);
+                animatedMeshes.push(screen);
+            }
+
+            scene.add(discoSphere);
+            createParticles();
+        }
+
+        function createParticles() {
+            const particleCount = 300;
+            const particles = new THREE.Group();
+
+            for (let i = 0; i < particleCount; i++) {
+                const size = Math.random() * 0.1 + 0.05;
+                const geometry = new THREE.SphereGeometry(size, 8, 8);
+                const colorIndex = Math.floor(Math.random() * themes[currentTheme].particleColors.length);
+                const material = new THREE.MeshBasicMaterial({
+                    color: themes[currentTheme].particleColors[colorIndex],
+                    transparent: true,
+                    opacity: Math.random() * 0.5 + 0.3
+                });
+
+                const particle = new THREE.Mesh(geometry, material);
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const r = 10 + Math.random() * 20;
+
+                particle.position.x = r * Math.sin(phi) * Math.cos(theta);
+                particle.position.y = r * Math.sin(phi) * Math.sin(theta);
+                particle.position.z = r * Math.cos(phi);
+
+                particle.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.02,
+                        (Math.random() - 0.5) * 0.02,
+                        (Math.random() - 0.5) * 0.02
+                    ),
+                    originalPosition: particle.position.clone()
+                };
+
+                particles.add(particle);
+            }
+            scene.add(particles);
+        }
+
+        function setupUI() {
+            const yearFilters = document.getElementById('yearFilters');
+            yearFilters.innerHTML = '';
+
+            const allBtn = document.createElement('button');
+            allBtn.className = 'btn-tech px-4 py-1 rounded-full text-xs font-bold text-white bg-cyber-blue/20 border-cyber-blue';
+            allBtn.textContent = 'ALL';
+            allBtn.onclick = () => setDecadeFilter(null);
+            yearFilters.appendChild(allBtn);
+
+            const decades = [...new Set(videoPlaylist.map(v => v.decade))].sort();
+            decades.forEach(decade => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-tech px-4 py-1 rounded-full text-xs text-gray-400 hover:text-white';
+                btn.textContent = decade.replace('s', '');
+                btn.onclick = (e) => {
+                    setDecadeFilter(decade);
+                    // Reset others
+                    Array.from(yearFilters.children).forEach(c => c.classList.remove('active', 'bg-cyber-blue/20', 'border-cyber-blue', 'text-white'));
+                    // Set active
+                    e.target.classList.add('active', 'bg-cyber-blue/20', 'border-cyber-blue', 'text-white');
+                };
+                yearFilters.appendChild(btn);
+            });
+            document.getElementById('screenCount').textContent = animatedMeshes.length;
+        }
+
+        function setDecadeFilter(decade) {
+            currentDecadeFilter = decade;
+            animatedMeshes.forEach(mesh => {
+                mesh.visible = !decade || mesh.userData.decade === decade;
+                mesh.material.opacity = mesh.visible ? 0.95 : 0.1; // Plus subtil que 0.3
+            });
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            renderer.domElement.addEventListener('click', (event) => {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(animatedMeshes);
+
+                if (intersects.length > 0) {
+                    playVideo(intersects[0].object.userData);
+                }
+            });
+
+            renderer.domElement.addEventListener('mousemove', (event) => {
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(animatedMeshes);
+
+                animatedMeshes.forEach(mesh => {
+                    if(mesh.visible) mesh.material.opacity = 0.95;
+                });
+
+                if (intersects.length > 0) {
+                    const screen = intersects[0].object;
+                    screen.material.opacity = 1;
+                    screen.material.emissiveIntensity = themes[currentTheme].emissiveIntensity * 1.5;
+                    document.body.style.cursor = 'pointer';
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            });
+        }
+
+        function playVideo(videoData) {
+            activeVideoCount++;
+            document.getElementById('activeVideos').textContent = activeVideoCount;
+
+            const hologram = document.getElementById('hologram');
+            hologram.classList.remove('hidden');
+            
+            document.getElementById('hologramTitle').textContent = videoData.title;
+            document.getElementById('hologramYear').textContent = videoData.year;
+
+            const playerDiv = document.getElementById('videoPlayer');
+            playerDiv.innerHTML = `
+                <iframe width="100%" height="100%" 
+                src="https://www.youtube.com/embed/${videoData.id}?autoplay=1&rel=0&modestbranding=1&controls=1&showinfo=0" 
+                title="${videoData.title}" frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen></iframe>
+            `;
+
+            animatedMeshes.forEach(mesh => {
+                if (mesh.userData.id === videoData.id) {
+                    mesh.material.emissiveIntensity = themes[currentTheme].emissiveIntensity * 2;
+                    setTimeout(() => {
+                        mesh.material.emissiveIntensity = themes[currentTheme].emissiveIntensity * 0.3;
+                    }, 3000);
+                }
+            });
+        }
+
+        function closeHologram() {
+            activeVideoCount = Math.max(0, activeVideoCount - 1);
+            document.getElementById('activeVideos').textContent = activeVideoCount;
+            document.getElementById('hologram').classList.add('hidden');
+            document.getElementById('videoPlayer').innerHTML = '';
+        }
+
+        function toggleRotation() {
+            isRotating = !isRotating;
+            const button = document.getElementById('toggleRotation');
+            if (isRotating) {
+                button.innerHTML = '<i class="fas fa-pause"></i>';
+                button.classList.add('text-cyber-blue');
+            } else {
+                button.innerHTML = '<i class="fas fa-play"></i>';
+                button.classList.remove('text-cyber-blue');
+            }
+        }
+
+        function changeSpeed(value) {
+            rotationSpeed = value * 0.005;
+            document.getElementById('speedValue').textContent = `${value}x`;
+        }
+
+        function resetCamera() {
+            controls.reset();
+            camera.position.z = 8;
+        }
+
+        function changeTheme() {
+            document.getElementById('mainInterface').style.display = 'none';
+            document.getElementById('themeScreen').style.display = 'flex';
+            setTimeout(() => document.getElementById('themeScreen').style.opacity = '1', 50);
+            closeHologram();
+        }
+
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+
+            // FPS
+            frameCount++;
+            if (currentTime - lastFrameTime >= 1000) {
+                fps = Math.round((frameCount * 1000) / (currentTime - lastFrameTime));
+                document.getElementById('fpsCounter').textContent = fps + " FPS";
+                frameCount = 0;
+                lastFrameTime = currentTime;
+            }
+
+            controls.update();
+
+            if (isRotating && discoSphere) {
+                discoSphere.rotation.y += rotationSpeed;
+                discoSphere.rotation.x += rotationSpeed * 0.3;
+            }
+
+            const now = Date.now();
+            animatedMeshes.forEach(mesh => {
+                if (mesh.visible && now - mesh.userData.lastFrameUpdate > 333) {
+                    mesh.userData.frameIndex = (mesh.userData.frameIndex + 1) % 3;
+                    mesh.material.map = mesh.userData.frames[mesh.userData.frameIndex];
+                    mesh.userData.lastFrameUpdate = now;
+                }
+            });
+
+            scene.children.forEach(child => {
+                if (child.isGroup && child !== discoSphere) {
+                    child.children.forEach(particle => {
+                        if (particle.userData && particle.userData.velocity) {
+                            particle.position.add(particle.userData.velocity);
+                            if (particle.position.distanceTo(particle.userData.originalPosition) > 5) {
+                                particle.userData.velocity.multiplyScalar(-1);
+                            }
+                        }
+                    });
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Init
+        window.addEventListener('load', () => {
+            selectTheme('neon');
+        });
+    </script>
+</body>
+</html>
