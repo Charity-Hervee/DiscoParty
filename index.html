@@ -3,207 +3,483 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DiscoSphere - CLUB IMMERSION</title>
+    <title>DiscoSphere Pro - Ultimate Edition</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { 'tech': ['Rajdhani', 'sans-serif'], 'display': ['Syncopate', 'sans-serif'] },
-                    colors: { 'cyber-black': '#050508', 'cyber-glass': 'rgba(10, 15, 30, 0.75)', 'cyber-blue': '#00f3ff' },
-                    animation: { 'pulse-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                    fontFamily: {
+                        'tech': ['Rajdhani', 'sans-serif'],
+                        'display': ['Syncopate', 'sans-serif'],
+                    },
+                    colors: {
+                        'cyber-black': '#050508',
+                        'cyber-glass': 'rgba(10, 15, 30, 0.75)',
+                        'cyber-blue': '#00f3ff',
+                        'cyber-pink': '#bc13fe',
+                        'xmas-red': '#ff0f39',
+                        'xmas-gold': '#ffd700',
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(0, 243, 255, 0.15)',
+                        'glow-active': '0 0 30px rgba(0, 243, 255, 0.4)',
+                    }
                 }
             }
         }
     </script>
 
     <style>
+        /* --- GLOBAL & ANIMATIONS --- */
         body {
             background-color: #000;
             color: #fff;
             overflow: hidden;
-            font-family: 'Rajdhani', sans-serif;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(20, 20, 40, 0.4) 0%, #000 100%),
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
         }
 
-        /* AMBIANCE CLUB - FOND ANIMÉ */
-        .club-bg {
-            position: fixed; inset: 0; z-index: -1;
-            background: radial-gradient(circle at 50% 50%, rgba(20, 0, 40, 0.2) 0%, #000 80%);
-            animation: bg-pulse 4s infinite alternate;
-        }
-        @keyframes bg-pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            100% { transform: scale(1.1); opacity: 1; }
-        }
-
-        /* GLASS PANEL */
+        /* Glassmorphism */
         .glass-panel {
-            background: rgba(10, 10, 20, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background: var(--cyber-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.8);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-panel::before {
+            content: '';
+            position: absolute; top: 0; left: 0; width: 100%; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.5), transparent);
         }
 
-        /* HOLOGRAMME */
+        /* Tech Look */
+        .cut-corner {
+            clip-path: polygon(
+                15px 0, 100% 0, 
+                100% calc(100% - 15px), calc(100% - 15px) 100%, 
+                0 100%, 0 15px
+            );
+        }
+
+        /* --- HOLOGRAMME --- */
         .holo-frame {
-            border: 1px solid rgba(0, 243, 255, 0.5);
-            background: rgba(0, 5, 10, 0.9);
-            box-shadow: 0 0 40px rgba(0, 243, 255, 0.2);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            background: rgba(0, 10, 20, 0.95);
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.15);
         }
-        .scanline {
-            width: 100%; height: 100%; position: absolute;
-            background: linear-gradient(to bottom, transparent 50%, rgba(0, 255, 255, 0.05) 50%);
-            background-size: 100% 4px; pointer-events: none; z-index: 10;
+        .holo-scanline {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 243, 255, 0.03) 50%);
+            background-size: 100% 3px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .holo-beam {
+            position: absolute; top: 0; left: 0; width: 100%; height: 5px;
+            background: rgba(0, 243, 255, 0.5);
+            box-shadow: 0 0 15px #00f3ff;
+            opacity: 0.6;
+            animation: scan-beam 2.5s linear infinite;
+            pointer-events: none;
+            z-index: 11;
+        }
+        @keyframes scan-beam { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+
+        /* --- UI ELEMENTS --- */
+        .btn-tech {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-tech:hover {
+            background: rgba(0, 243, 255, 0.15);
+            border-color: #00f3ff;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .btn-tech.active {
+            background: #00f3ff;
+            color: #000;
+            border-color: #00f3ff;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
         }
 
-        /* LASER BEAMS CSS (UI DECORATION) */
-        .laser-ui {
-            position: absolute; top: 0; width: 2px; height: 100%;
-            background: linear-gradient(to bottom, transparent, #00f3ff, transparent);
-            opacity: 0.3; animation: laser-scan 3s infinite ease-in-out;
+        .theme-selector-item {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255,255,255,0.1);
         }
-        @keyframes laser-scan { 0% { left: 0%; } 50% { left: 100%; } 100% { left: 0%; } }
+        .theme-selector-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .theme-selector-item.active {
+            border-color: #00f3ff;
+            background: rgba(0, 243, 255, 0.05);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
+        }
 
-        /* BOUTONS */
-        .btn-neon {
-            transition: all 0.3s; border: 1px solid rgba(255,255,255,0.2);
+        /* --- MODAL INPUT --- */
+        .birthday-input {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #00f3ff;
+            color: white;
+            font-size: 2rem;
+            text-align: center;
+            outline: none;
+            font-family: 'Syncopate', sans-serif;
         }
-        .btn-neon:hover, .btn-neon.active {
-            background: rgba(255,255,255,0.1); border-color: currentColor; box-shadow: 0 0 15px currentColor;
-        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
     </style>
 </head>
-<body>
+<body class="font-tech text-gray-200">
 
-    <div class="club-bg"></div>
+    <div id="themeScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center transition-all duration-700 bg-black/95 backdrop-blur-md overflow-y-auto">
+        
+        <div class="relative w-full max-w-7xl mx-auto px-4 py-10 flex flex-col items-center">
+            
+            <div class="text-center mb-12">
+                <h1 class="font-display text-4xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyber-blue via-white to-cyber-pink tracking-widest mb-4 filter drop-shadow-[0_0_15px_rgba(0,243,255,0.6)]">
+                    DISCOSPHERE
+                </h1>
+                <div class="flex items-center justify-center gap-4">
+                    <div class="h-px w-16 bg-gradient-to-r from-transparent to-cyber-blue"></div>
+                    <p class="text-cyan-400/80 tracking-[0.4em] text-xs md:text-sm uppercase">Ultimate Sonic Visualizer</p>
+                    <div class="h-px w-16 bg-gradient-to-l from-transparent to-cyber-blue"></div>
+                </div>
+            </div>
 
-    <div id="themeScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl transition-all duration-700">
-        <h1 class="font-display text-5xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-white to-purple-500 mb-2 animate-pulse">
-            DISCO<span class="text-white">SPHERE</span>
-        </h1>
-        <p class="text-cyan-400 tracking-[0.5em] text-sm uppercase mb-12">Immersive Experience v3.0</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 w-full mb-12">
+                
+                <div onclick="selectTheme('neon')" data-theme="neon" class="theme-selector-item group cursor-pointer glass-panel p-6 rounded-xl text-center relative active">
+                    <div class="w-14 h-14 mx-auto mb-4 rounded-full border border-purple-500/50 flex items-center justify-center group-hover:bg-purple-500/20 group-hover:shadow-[0_0_15px_#bc13fe] transition-all">
+                        <i class="fas fa-bolt text-2xl text-purple-400"></i>
+                    </div>
+                    <h3 class="font-display text-lg mb-2 text-white">NEON 80s</h3>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">Retrowave & Synthpop</p>
+                </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 max-w-6xl px-4">
-            <button onclick="selectTheme('neon')" class="btn-neon p-6 rounded-xl text-center border-purple-500 text-purple-400 hover:text-white">
-                <i class="fas fa-bolt text-3xl mb-2"></i><br>NEON 80s
-            </button>
-            <button onclick="selectTheme('cyber')" class="btn-neon p-6 rounded-xl text-center border-cyan-500 text-cyan-400 hover:text-white">
-                <i class="fas fa-microchip text-3xl mb-2"></i><br>CYBER
-            </button>
-            <button onclick="selectTheme('kpop')" class="btn-neon p-6 rounded-xl text-center border-pink-500 text-pink-400 hover:text-white">
-                <i class="fas fa-heart text-3xl mb-2"></i><br>K-POP
-            </button>
-            <button onclick="selectTheme('noel')" class="btn-neon p-6 rounded-xl text-center border-red-500 text-red-400 hover:text-white">
-                <i class="fas fa-gift text-3xl mb-2"></i><br>NOËL
-            </button>
-            <button onclick="toggleBirthdayMode()" class="btn-neon p-6 rounded-xl text-center border-yellow-500 text-yellow-400 hover:text-white">
-                <i class="fas fa-birthday-cake text-3xl mb-2"></i><br>MY BIRTHDAY
+                <div onclick="selectTheme('cyber')" data-theme="cyber" class="theme-selector-item group cursor-pointer glass-panel p-6 rounded-xl text-center relative">
+                    <div class="w-14 h-14 mx-auto mb-4 rounded-full border border-cyan-500/50 flex items-center justify-center group-hover:bg-cyan-500/20 group-hover:shadow-[0_0_15px_#00f3ff] transition-all">
+                        <i class="fas fa-microchip text-2xl text-cyan-400"></i>
+                    </div>
+                    <h3 class="font-display text-lg mb-2 text-white">CYBERPUNK</h3>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">High Tech & Low Life</p>
+                </div>
+
+                <div onclick="selectTheme('kpop')" data-theme="kpop" class="theme-selector-item group cursor-pointer glass-panel p-6 rounded-xl text-center relative">
+                    <div class="w-14 h-14 mx-auto mb-4 rounded-full border border-pink-500/50 flex items-center justify-center group-hover:bg-pink-500/20 group-hover:shadow-[0_0_15px_#ff1493] transition-all">
+                        <i class="fas fa-heart text-2xl text-pink-500"></i>
+                    </div>
+                    <h3 class="font-display text-lg mb-2 text-white">K-POP</h3>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">BTS, Blackpink & More</p>
+                </div>
+
+                <div onclick="selectTheme('noel')" data-theme="noel" class="theme-selector-item group cursor-pointer glass-panel p-6 rounded-xl text-center relative">
+                    <div class="w-14 h-14 mx-auto mb-4 rounded-full border border-red-500/50 flex items-center justify-center group-hover:bg-red-500/20 group-hover:shadow-[0_0_15px_#ff0f39] transition-all">
+                        <i class="fas fa-gift text-2xl text-red-500"></i>
+                    </div>
+                    <h3 class="font-display text-lg mb-2 text-white">NOËL</h3>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">Xmas Classics Only</p>
+                </div>
+
+                <div onclick="toggleBirthdayMode()" class="theme-selector-item group cursor-pointer glass-panel p-6 rounded-xl text-center relative border-yellow-500/30">
+                    <div class="absolute inset-0 bg-yellow-500/5 animate-pulse"></div>
+                    <div class="w-14 h-14 mx-auto mb-4 rounded-full border border-yellow-500/50 flex items-center justify-center group-hover:bg-yellow-500/20 group-hover:shadow-[0_0_15px_#ffd700] transition-all">
+                        <i class="fas fa-birthday-cake text-2xl text-yellow-400"></i>
+                    </div>
+                    <h3 class="font-display text-lg mb-2 text-yellow-400">MY BIRTHDAY</h3>
+                    <p class="text-[10px] text-yellow-200/70 uppercase tracking-wide">Discover your #1 Hit</p>
+                </div>
+            </div>
+
+            <div id="birthdayInputSection" class="hidden w-full max-w-md bg-black/80 border border-yellow-500/50 p-8 rounded-2xl text-center mb-8 relative">
+                <button onclick="toggleBirthdayMode()" class="absolute top-2 right-4 text-gray-500 hover:text-white">✕</button>
+                <h3 class="text-xl font-display text-yellow-400 mb-6">ENTREZ VOTRE ANNÉE DE NAISSANCE</h3>
+                <input type="number" id="userYear" class="birthday-input w-full mb-6" placeholder="ex: 1995" min="1950" max="2023">
+                <button onclick="startBirthdayMode()" class="btn-tech w-full py-3 bg-yellow-500/20 text-yellow-400 border-yellow-500 hover:bg-yellow-500 hover:text-black">
+                    DÉCOUVRIR MON HIT
+                </button>
+            </div>
+
+            <button id="mainStartBtn" onclick="startExperience()" class="group relative px-16 py-5 overflow-hidden rounded-full bg-transparent border border-cyber-blue/50 hover:border-cyber-blue transition-all duration-300">
+                <div class="absolute inset-0 w-0 bg-cyber-blue/20 transition-all duration-[250ms] ease-out group-hover:w-full"></div>
+                <span class="relative font-display font-bold tracking-widest text-lg text-white group-hover:text-cyber-blue flex items-center gap-3">
+                    <i class="fas fa-play"></i> INITIALISER LE SYSTÈME
+                </span>
             </button>
         </div>
-
-        <div id="birthdayInputSection" class="hidden mt-8 w-full max-w-md bg-black/80 border border-yellow-500 p-6 rounded-2xl text-center">
-            <h3 class="text-xl font-display text-yellow-400 mb-4">ENTREZ VOTRE ANNÉE</h3>
-            <input type="number" id="userYear" class="w-full bg-transparent border-b-2 border-yellow-500 text-white text-center text-3xl outline-none mb-4 font-mono" placeholder="YYYY">
-            <button onclick="startBirthdayMode()" class="w-full py-3 bg-yellow-500 text-black font-bold rounded hover:bg-white transition">LANCER LE HIT</button>
-        </div>
-
-        <button onclick="startExperience()" class="mt-12 px-12 py-4 rounded-full border border-white/30 text-white hover:bg-white hover:text-black transition-all tracking-widest font-bold">
-            ENTRER DANS LA BOITE
-        </button>
     </div>
 
     <div id="mainInterface" class="hidden fixed inset-0 z-0">
+        
         <div id="canvasContainer" class="absolute inset-0 z-0"></div>
-        <div class="laser-ui"></div> <div class="absolute top-0 w-full z-20 p-4 flex justify-center overflow-x-auto">
-            <div id="yearFilters" class="glass-panel rounded-full px-4 py-2 flex gap-2"></div>
-        </div>
 
-        <div class="absolute top-4 left-4 z-20 hidden md:block">
-            <div class="glass-panel p-4 rounded-lg w-64">
-                <h3 class="text-xs text-gray-400 tracking-widest border-b border-white/10 pb-2 mb-2">AMBIANCE CONTROL</h3>
-                <div class="flex justify-between text-sm"><span id="themeLabel">THEME</span> <span class="text-cyan-400 font-bold">ACTIVE</span></div>
-                <div class="flex justify-between text-sm"><span id="videoCounter">VIDEOS</span> <span class="text-purple-400 font-bold">0</span></div>
-            </div>
-        </div>
-
-        <div id="hologram" class="hidden absolute top-1/2 right-4 md:right-10 transform -translate-y-1/2 z-30 w-[90vw] md:w-[600px]">
-            <div class="holo-frame p-1 relative rounded-lg overflow-hidden backdrop-blur-xl transition-all duration-500">
-                <div class="scanline"></div>
-                <div class="flex justify-between bg-black/50 px-4 py-2 border-b border-white/10">
-                    <h3 id="holoTitle" class="font-display text-xs text-cyan-400 truncate w-3/4">LOADING...</h3>
-                    <button onclick="closeHologram()" class="text-white hover:text-red-500"><i class="fas fa-times"></i></button>
+        <div class="absolute top-6 left-6 z-20 w-72 hidden md:block">
+            <div class="glass-panel cut-corner p-5">
+                <div class="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+                    <h2 class="font-display text-md text-cyber-blue tracking-wider">SYSTEM STATUS</h2>
+                    <div class="flex gap-1">
+                        <span class="w-1 h-1 bg-cyber-blue rounded-full animate-ping"></span>
+                        <span class="w-1 h-1 bg-cyber-blue rounded-full"></span>
+                    </div>
                 </div>
-                <div class="relative aspect-video bg-black">
-                    <div id="videoPlayer" class="w-full h-full"></div>
-                </div>
-                <div class="px-4 py-2 bg-black/80 flex justify-between items-center text-[10px] text-gray-400 font-mono">
-                    <span id="holoYear">YEAR ----</span>
-                    <span class="text-red-500 animate-pulse">● LIVE</span>
+                <div class="space-y-3 font-mono text-[10px]">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">ACTIVE SCREENS</span>
+                        <span id="screenCount" class="text-white font-bold">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">THEME</span>
+                        <span id="themeDisplay" class="text-cyber-pink font-bold">NEON</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="absolute bottom-8 w-full flex justify-center z-20 pointer-events-none">
-            <div class="glass-panel rounded-full p-3 pointer-events-auto flex items-center gap-4">
-                <button onclick="toggleRotation()" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center"><i class="fas fa-pause"></i></button>
-                <button onclick="changeTheme()" class="px-6 py-2 rounded-full border border-white/20 hover:bg-white hover:text-black text-xs font-bold">MENU</button>
+        <div class="absolute top-6 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-4xl px-4 overflow-x-auto no-scrollbar">
+            <div class="glass-panel rounded-full px-2 py-2 flex justify-center space-x-2 min-w-max" id="yearFilters">
+                </div>
+        </div>
+
+        <div id="hologram" class="hidden absolute top-1/2 right-4 md:right-10 transform -translate-y-1/2 z-30 w-[90vw] md:w-[560px]">
+            <div class="relative">
+                <div class="hidden md:block absolute -left-8 top-1/2 w-8 h-px bg-cyber-blue/50"></div>
+                
+                <div class="holo-frame cut-corner p-1 relative overflow-hidden backdrop-blur-xl">
+                    <div class="holo-scanline"></div>
+                    <div class="holo-beam"></div>
+                    
+                    <div class="flex justify-between items-center bg-black/80 px-4 py-2 mb-1 border-b border-white/10">
+                        <div class="flex flex-col overflow-hidden">
+                            <h3 id="hologramTitle" class="font-display text-xs text-cyber-blue uppercase truncate">LOADING...</h3>
+                            <span id="hologramYear" class="text-[10px] text-gray-400 font-mono">---</span>
+                        </div>
+                        <button onclick="closeHologram()" class="text-gray-500 hover:text-red-500 transition-colors px-2">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="relative aspect-video bg-black border border-white/5 shadow-inner">
+                        <div id="videoPlayer" class="w-full h-full"></div>
+                    </div>
+
+                    <div class="px-4 py-2 bg-black/90 flex justify-between items-center border-t border-white/5">
+                         <div class="flex items-center gap-2">
+                             <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                             <span class="text-[9px] text-cyber-pink font-mono tracking-widest">LIVE FEED</span>
+                         </div>
+                         <p class="text-[9px] text-gray-600 font-mono">YOUTUBE API v3</p>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 w-[90%] max-w-2xl">
+            <div class="glass-panel rounded-full p-3 flex items-center justify-between gap-4">
+                
+                <div class="flex items-center gap-2 pl-2">
+                    <button id="toggleRotation" onclick="toggleRotation()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-cyber-blue hover:text-black transition-all flex items-center justify-center text-cyber-blue border border-cyber-blue/30">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button onclick="resetCamera()" class="w-10 h-10 rounded-full bg-white/5 hover:text-white transition-all flex items-center justify-center text-gray-400">
+                        <i class="fas fa-compress-arrows-alt"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 px-4 border-l border-r border-white/10 flex items-center gap-3">
+                    <i class="fas fa-tachometer-alt text-gray-500 text-xs"></i>
+                    <input type="range" min="0.1" max="3" step="0.1" value="1" oninput="changeSpeed(this.value)" 
+                           class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyber-blue">
+                </div>
+
+                <button onclick="changeTheme()" class="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold flex items-center gap-2 transition-all">
+                    <i class="fas fa-arrow-left"></i> MENU
+                </button>
+
+            </div>
+        </div>
+
     </div>
 
     <script>
-        // --- DATA ---
+        // --- BASE DE DONNÉES ETENDUE ---
         const fullPlaylist = [
+            // --- 70s ---
             {id: "3JWTaaS7LdU", title: "Bee Gees - Stayin' Alive", year: "1977", decade: "70s", color: "#FF6B6B", theme: "disco"},
             {id: "fNFzfwLM72c", title: "Queen - Bohemian Rhapsody", year: "1975", decade: "70s", color: "#4ECDC4", theme: "retro"},
             {id: "rY0WxgSXdEE", title: "ABBA - Dancing Queen", year: "1976", decade: "70s", color: "#FFD166", theme: "retro"},
+            {id: "I_izvAbhExY", title: "Donna Summer - Hot Stuff", year: "1979", decade: "70s", color: "#06D6A0", theme: "disco"},
+            
+            // --- 80s ---
             {id: "dQw4w9WgXcQ", title: "Rick Astley - Never Gonna Give You Up", year: "1987", decade: "80s", color: "#EF476F", theme: "neon"},
             {id: "Zi_XLOBDo_Y", title: "Michael Jackson - Billie Jean", year: "1983", decade: "80s", color: "#FFD166", theme: "neon"},
             {id: "PIb6AZdTr-A", title: "Cyndi Lauper - Girls Just Want to Have Fun", year: "1983", decade: "80s", color: "#bc13fe", theme: "neon"},
+            {id: "s__rX_WL100", title: "Madonna - Like a Virgin", year: "1984", decade: "80s", color: "#00f3ff", theme: "neon"},
+            {id: "djV11Xbc914", title: "a-ha - Take On Me", year: "1985", decade: "80s", color: "#FF6B6B", theme: "neon"},
+
+            // --- 90s ---
             {id: "CduA0TULnow", title: "Backstreet Boys - I Want It That Way", year: "1999", decade: "90s", color: "#EF476F", theme: "retro"},
             {id: "C-u5WLJ9Yk4", title: "Britney Spears - Baby One More Time", year: "1998", decade: "90s", color: "#118AB2", theme: "retro"},
-            {id: "V0PisGe66mY", title: "Las Ketchup - Aserejé", year: "2002", decade: "90s", color: "#FF0000", theme: "summer"},
+            {id: "gJLIiF15wjQ", title: "Spice Girls - Wannabe", year: "1996", decade: "90s", color: "#06D6A0", theme: "retro"},
+            {id: "hTWKbfoikeg", title: "Nirvana - Smells Like Teen Spirit", year: "1991", decade: "90s", color: "#118AB2", theme: "grunge"},
             {id: "kIDWgqDBNXA", title: "Christina Aguilera - Genie in a Bottle", year: "1999", decade: "90s", color: "#FF6B6B", theme: "retro"},
+            {id: "V0PisGe66mY", title: "Las Ketchup - Aserejé", year: "2002", decade: "90s", color: "#FF0000", theme: "summer"}, // Début 2000 mais vibe 90s souvent
+
+            // --- 2000s ---
             {id: "CvBfHwUxHIk", title: "Rihanna - Umbrella", year: "2007", decade: "00s", color: "#EF476F", theme: "cyber"},
             {id: "4m1EFMoRFvY", title: "Beyoncé - Single Ladies", year: "2008", decade: "00s", color: "#118AB2", theme: "cyber"},
+            {id: "bESGLojNYSo", title: "Lady Gaga - Poker Face", year: "2008", decade: "00s", color: "#FFD166", theme: "cyber"},
+            {id: "PWgvGjAhvIw", title: "OutKast - Hey Ya!", year: "2003", decade: "00s", color: "#06D6A0", theme: "retro"},
+            
+            // --- 2010s ---
             {id: "OPf0YbXqDm0", title: "Mark Ronson ft. Bruno Mars - Uptown Funk", year: "2014", decade: "10s", color: "#EF476F", theme: "funk"},
+            {id: "nfWlot6h_JM", title: "Taylor Swift - Shake It Off", year: "2014", decade: "10s", color: "#118AB2", theme: "pop"},
+            {id: "JGwWNGJdvx8", title: "Ed Sheeran - Shape of You", year: "2017", decade: "10s", color: "#FFD166", theme: "pop"},
+            {id: "kJQP7kiw5Fk", title: "Luis Fonsi - Despacito", year: "2017", decade: "10s", color: "#06D6A0", theme: "latino"},
             {id: "7-7knsP2n5w", title: "Shakira - La La La (Brazil 2014)", year: "2014", decade: "10s", color: "#FFD700", theme: "latino"},
             {id: "hcm55lU9knw", title: "Michel Teló - Ai Se Eu Te Pego", year: "2011", decade: "10s", color: "#00FF00", theme: "latino"},
             {id: "gset79KMmt0", title: "Sia - Snowman", year: "2017", decade: "10s", color: "#FFFFFF", theme: "pop"},
+
+            // --- 2020s ---
             {id: "4NRXx6U8ABQ", title: "The Weeknd - Blinding Lights", year: "2020", decade: "20s", color: "#EF476F", theme: "synth"},
+            {id: "TUVcZfQe-Kw", title: "Dua Lipa - Levitating", year: "2020", decade: "20s", color: "#118AB2", theme: "pop"},
+            {id: "H5v3kku4y6Q", title: "Harry Styles - As It Was", year: "2022", decade: "20s", color: "#FFD166", theme: "pop"},
+            {id: "jfKfPfyJRdk", title: "Lofi Girl - lofi hip hop radio", year: "2022", decade: "20s", color: "#06D6A0", theme: "chill"},
             {id: "P3QS83ubhHE", title: "Stromae - Santé", year: "2021", decade: "20s", color: "#FF6B6B", theme: "pop"},
+
+            // --- NOEL (Theme: noel) ---
             {id: "aAkMkVFwAoo", title: "Mariah Carey - All I Want for Christmas", year: "1994", decade: "noel", color: "#ff0f39", theme: "noel"},
             {id: "E8gmARGvPlI", title: "Wham! - Last Christmas", year: "1984", decade: "noel", color: "#00ff00", theme: "noel"},
+            {id: "QJ5DOWPGxwg", title: "Ariana Grande - Santa Tell Me", year: "2014", decade: "noel", color: "#ffffff", theme: "noel"},
+            {id: "LUjn3RpkcKY", title: "Michael Bublé - It's Beginning to Look...", year: "2011", decade: "noel", color: "#ffd700", theme: "noel"},
+            {id: "gset79KMmt0", title: "Sia - Snowman", year: "2017", decade: "noel", color: "#87CEEB", theme: "noel"}, // Aussi ici
+
+            // --- KPOP (Theme: kpop) ---
             {id: "9bZkp7q19f0", title: "PSY - GANGNAM STYLE", year: "2012", decade: "kpop", color: "#FF1493", theme: "kpop"},
             {id: "gdZLi9oWNZg", title: "BTS - Dynamite", year: "2020", decade: "kpop", color: "#FFD700", theme: "kpop"},
-            {id: "IHNzOHi8sJs", title: "BLACKPINK - DDU-DU DDU-DU", year: "2018", decade: "kpop", color: "#FF1493", theme: "kpop"}
+            {id: "IHNzOHi8sJs", title: "BLACKPINK - DDU-DU DDU-DU", year: "2018", decade: "kpop", color: "#FF1493", theme: "kpop"},
+            {id: "XsX3ATc3FbA", title: "BTS - Boy With Luv", year: "2019", decade: "kpop", color: "#FF69B4", theme: "kpop"},
+            {id: "ioNng23DkIM", title: "BLACKPINK - How You Like That", year: "2020", decade: "kpop", color: "#000000", theme: "kpop"},
+            {id: "WMweEpGlu_U", title: "BTS - Butter", year: "2021", decade: "kpop", color: "#FFFF00", theme: "kpop"},
+            {id: "i0p1bmr0EmE", title: "TWICE - What is Love?", year: "2018", decade: "kpop", color: "#FF69B4", theme: "kpop"},
+            {id: "vecSVX1QYbQ", title: "iKON - Love Scenario", year: "2018", decade: "kpop", color: "#808080", theme: "kpop"},
+            {id: "I5sNImxX0xU", title: "BIGBANG - BANG BANG BANG", year: "2015", decade: "kpop", color: "#FF0000", theme: "kpop"},
+            {id: "j7_lSP8Vc3o", title: "2NE1 - I Am the Best", year: "2011", decade: "kpop", color: "#C0C0C0", theme: "kpop"}
         ];
 
-        const themes = {
-            neon: { name: "NEON 80s", bg: 0x050510, laser: 0xbc13fe },
-            cyber: { name: "CYBERPUNK", bg: 0x000510, laser: 0x00f3ff },
-            kpop: { name: "K-POP", bg: 0x100005, laser: 0xff1493 },
-            noel: { name: "NOËL", bg: 0x0a0000, laser: 0xff0000 }
+        // Billboard #1 par année (Données simplifiées pour le jeu)
+        const billboardData = {
+            1950: "Goodnight Irene", 1951: "Too Young", 1952: "Blue Tango", 1953: "Song from Moulin Rouge", 1954: "Little Things Mean a Lot",
+            1955: "Cherry Pink", 1956: "Heartbreak Hotel", 1957: "All Shook Up", 1958: "Volare", 1959: "The Battle of New Orleans",
+            1960: "Theme from A Summer Place", 1961: "Tossin' and Turnin'", 1962: "Stranger on the Shore", 1963: "Sugar Shack", 1964: "I Want to Hold Your Hand",
+            1965: "Wooly Bully", 1966: "The Ballad of the Green Berets", 1967: "To Sir With Love", 1968: "Hey Jude", 1969: "Sugar, Sugar",
+            1970: "Bridge Over Troubled Water", 1971: "Joy to the World", 1972: "The First Time Ever I Saw Your Face", 1973: "Tie a Yellow Ribbon", 1974: "The Way We Were",
+            1975: "Love Will Keep Us Together", 1976: "Silly Love Songs", 1977: "Tonight's the Night", 1978: "Shadow Dancing", 1979: "My Sharona",
+            1980: "Call Me", 1981: "Bette Davis Eyes", 1982: "Physical", 1983: "Every Breath You Take", 1984: "When Doves Cry",
+            1985: "Careless Whisper", 1986: "That's What Friends Are For", 1987: "Walk Like an Egyptian", 1988: "Faith", 1989: "Look Away",
+            1990: "Hold On", 1991: "(Everything I Do) I Do It for You", 1992: "End of the Road", 1993: "I Will Always Love You", 1994: "The Sign",
+            1995: "Gangsta's Paradise", 1996: "Macarena", 1997: "Candle in the Wind 1997", 1998: "Too Close", 1999: "Believe",
+            2000: "Breathe", 2001: "Hanging by a Moment", 2002: "How You Remind Me", 2003: "In Da Club", 2004: "Yeah!",
+            2005: "We Belong Together", 2006: "Bad Day", 2007: "Irreplaceable", 2008: "Low", 2009: "Boom Boom Pow",
+            2010: "Tik Tok", 2011: "Rolling in the Deep", 2012: "Somebody That I Used to Know", 2013: "Thrift Shop", 2014: "Happy",
+            2015: "Uptown Funk", 2016: "Love Yourself", 2017: "Shape of You", 2018: "God's Plan", 2019: "Old Town Road",
+            2020: "Blinding Lights", 2021: "Levitating", 2022: "Heat Waves", 2023: "Last Night"
         };
 
-        // --- VARS ---
-        let scene, camera, renderer, controls, raycaster, mouse;
-        let sphereGroup, animatedMeshes = [], lasers = [], floorGrid;
+        // Mapping YouTube pour Billboard (Quelques exemples, à compléter ou utiliser recherche générique)
+        const billboardVideos = {
+            1983: "OMOGaugKpzs", // Every Breath You Take
+            1995: "fPO76Jlnz6c", // Gangsta's Paradise
+            1998: "dDHg80j9Drs", // Too Close (exemple)
+            2017: "JGwWNGJdvx8", // Shape of You
+            // Fallback générique utilisé si pas dans la liste: recherche par mots clés (simulé ici par un ID par défaut si manquant)
+        };
+
+        const themes = {
+            neon: { name: "NEON 80s", bg: "#050510", light: "#bc13fe", ambient: 0x220022 },
+            cyber: { name: "CYBERPUNK", bg: "#000510", light: "#00f3ff", ambient: 0x001122 },
+            kpop: { name: "K-POP", bg: "#100005", light: "#ff1493", ambient: 0x220011 },
+            noel: { name: "NOËL", bg: "#0a0000", light: "#ff0f39", ambient: 0x110000 },
+            synth: { name: "SYNTHWAVE", bg: "#1a051a", light: "#ff00ff", ambient: 0x220022 }
+        };
+
+        // Variables
         let currentTheme = 'neon';
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let sphereGroup, animatedMeshes = [];
         let isRotating = true;
-        let activeVideoCount = 0;
+        let activeVideo = null;
+        let currentFilter = 'ALL';
+
+        // --- GESTION DU JEU ANNIVERSAIRE ---
+        function toggleBirthdayMode() {
+            const section = document.getElementById('birthdayInputSection');
+            const mainBtn = document.getElementById('mainStartBtn');
+            section.classList.toggle('hidden');
+            mainBtn.classList.toggle('hidden'); // Cacher le bouton principal pour focus
+        }
+
+        function startBirthdayMode() {
+            const year = parseInt(document.getElementById('userYear').value);
+            if (!year || year < 1950 || year > 2023) {
+                alert("Année invalide (1950-2023)");
+                return;
+            }
+
+            const songTitle = billboardData[year] || "Unknown Hit";
+            // Pour l'exercice, on va utiliser une recherche générique YouTube (simulée ici par une vidéo de la playlist si dispo, sinon Rick Roll par sécurité)
+            // Dans un vrai projet, il faudrait une API de recherche. 
+            // Ici, on va voir si on a la vidéo dans notre playlist, sinon on met une vidéo par défaut festive.
+            let videoId = "dQw4w9WgXcQ"; // Rick Roll par défaut (humour)
+            
+            // Cherche dans la playlist si on a l'année exacte
+            const match = fullPlaylist.find(v => parseInt(v.year) === year);
+            if(match) videoId = match.id;
+            else if (billboardVideos[year]) videoId = billboardVideos[year];
+
+            // Lancer l'interface
+            startExperience();
+            
+            // Forcer l'ouverture de l'hologramme avec le résultat
+            setTimeout(() => {
+                playHologram({
+                    id: videoId,
+                    title: `#1 HIT OF ${year}: ${songTitle}`,
+                    year: year.toString()
+                });
+                // Afficher un message spécial
+                const desc = document.getElementById('hologramDescription');
+                desc.innerText = "🎉 HAPPY BIRTHDAY! THIS WAS THE #1 SONG.";
+                desc.style.color = "#ffd700";
+            }, 1500);
+        }
 
         // --- INIT ---
-        function selectTheme(t) { currentTheme = t; highlightBtn(t); }
-        function highlightBtn(t) {
-            document.querySelectorAll('.btn-neon').forEach(b => b.classList.remove('active', 'bg-white/20'));
-            // Logic to highlight simple but functional
+        function selectTheme(t) {
+            currentTheme = t;
+            document.querySelectorAll('.theme-selector-item').forEach(el => el.classList.remove('active', 'border-cyber-blue'));
+            document.querySelector(`[data-theme="${t}"]`).classList.add('active', 'border-cyber-blue');
         }
 
         function startExperience() {
@@ -211,32 +487,20 @@
             setTimeout(() => {
                 document.getElementById('themeScreen').style.display = 'none';
                 document.getElementById('mainInterface').style.display = 'block';
-                document.getElementById('themeLabel').innerText = themes[currentTheme].name;
+                document.getElementById('themeDisplay').innerText = themes[currentTheme].name;
                 initThree();
-                createFilters();
+                generateFilters();
             }, 800);
-        }
-
-        function toggleBirthdayMode() {
-            document.getElementById('birthdayInputSection').classList.toggle('hidden');
-        }
-
-        function startBirthdayMode() {
-            const year = document.getElementById('userYear').value;
-            // Simuler une trouvaille (dans un vrai cas, on ferait un fetch)
-            startExperience();
-            setTimeout(() => {
-                playHologram({id: "dQw4w9WgXcQ", title: `HIT N°1 DE ${year}`, year: year}); // Rick Roll par défaut pour la démo
-            }, 1000);
         }
 
         // --- THREE.JS ---
         function initThree() {
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(themes[currentTheme].bg, 0.02);
-            
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
-            camera.position.set(0, 2, 9);
+            scene.fog = new THREE.FogExp2(themes[currentTheme].bg, 0.035);
+            scene.background = new THREE.Color(themes[currentTheme].bg);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.z = 8.5;
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -246,179 +510,204 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 1.0;
+            controls.autoRotateSpeed = 0.8;
 
-            // LUMIÈRES DYNAMIQUES
-            const ambient = new THREE.AmbientLight(themes[currentTheme].bg, 0.5);
+            // Lights
+            const ambient = new THREE.AmbientLight(themes[currentTheme].ambient, 1);
             scene.add(ambient);
-            
-            // Spot principal (Boule disco)
-            const spot = new THREE.PointLight(themes[currentTheme].laser, 2, 20);
-            spot.position.set(5, 5, 5);
-            scene.add(spot);
+            const point = new THREE.PointLight(themes[currentTheme].light, 2, 20);
+            point.position.set(5, 5, 5);
+            scene.add(point);
 
-            // DANCE FLOOR
-            createDanceFloor();
-            // LASERS
-            createLasers();
-            // SPHERE
             createSphere();
-            // PARTICULES
-            createParticles();
+            addParticles();
 
+            // Events
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
-            
             window.addEventListener('resize', onResize);
+            window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('click', onClick);
-            window.addEventListener('mousemove', onMove);
-
+            
             animate();
-        }
-
-        function createDanceFloor() {
-            // Grille brillante au sol
-            const grid = new THREE.PolarGridHelper(20, 16, 8, 64, themes[currentTheme].laser, 0x222222);
-            grid.position.y = -4;
-            scene.add(grid);
-            floorGrid = grid;
-        }
-
-        function createLasers() {
-            // Création de 4 lasers qui tournent
-            const geometry = new THREE.CylinderGeometry(0.05, 0.05, 30);
-            const material = new THREE.MeshBasicMaterial({ 
-                color: themes[currentTheme].laser, 
-                transparent: true, 
-                opacity: 0.3,
-                blending: THREE.AdditiveBlending 
-            });
-
-            for(let i=0; i<6; i++) {
-                const laser = new THREE.Mesh(geometry, material);
-                laser.position.set(0, -4, 0);
-                laser.rotation.z = Math.PI / 2; // Coucher
-                laser.rotation.y = (Math.PI * 2 / 6) * i;
-                // Pivot object
-                const pivot = new THREE.Group();
-                pivot.add(laser);
-                scene.add(pivot);
-                lasers.push({mesh: pivot, speed: (Math.random() - 0.5) * 0.05});
-            }
         }
 
         function createSphere() {
             sphereGroup = new THREE.Group();
             scene.add(sphereGroup);
 
-            let list = fullPlaylist;
-            if(currentTheme === 'noel') list = fullPlaylist.filter(v => v.decade === 'noel');
-            else if(currentTheme === 'kpop') list = fullPlaylist.filter(v => v.decade === 'kpop');
-            else list = fullPlaylist.filter(v => v.decade !== 'noel' && v.decade !== 'kpop');
+            // Filtrage des vidéos selon le thème choisi
+            let playlist = fullPlaylist;
+            if (currentTheme === 'noel') {
+                playlist = fullPlaylist.filter(v => v.decade === 'noel');
+            } else if (currentTheme === 'kpop') {
+                playlist = fullPlaylist.filter(v => v.decade === 'kpop');
+            } else {
+                // Pour les autres thèmes, on exclut noel et kpop pour garder l'ambiance "Généraliste"
+                playlist = fullPlaylist.filter(v => v.decade !== 'noel' && v.decade !== 'kpop');
+            }
 
-            const loader = new THREE.TextureLoader();
-            loader.crossOrigin = "anonymous";
+            const totalPlates = 140;
+            const radius = 3.8;
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.crossOrigin = "anonymous";
 
-            // Fibonacci Sphere
-            const count = 120;
-            const radius = 3.5;
-
-            for(let i=0; i<count; i++) {
-                const phi = Math.acos(-1 + (2*i)/count);
-                const theta = Math.sqrt(count * Math.PI) * phi;
+            for(let i=0; i<totalPlates; i++) {
+                // Fibonacci Sphere Algorithm
+                const phi = Math.acos(-1 + (2 * i) / totalPlates);
+                const theta = Math.sqrt(totalPlates * Math.PI) * phi;
                 const x = radius * Math.cos(theta) * Math.sin(phi);
                 const y = radius * Math.sin(theta) * Math.sin(phi);
                 const z = radius * Math.cos(phi);
 
-                const data = list[i % list.length];
-                const geo = new THREE.PlaneGeometry(0.6, 0.45);
-                
-                // Texture Frame 1
-                const tex = loader.load(`https://img.youtube.com/vi/${data.id}/1.jpg`);
-                const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+                const geometry = new THREE.PlaneGeometry(0.55, 0.40); // 4:3 Ratio approx
+                const videoData = playlist[i % playlist.length];
 
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set(x,y,z);
+                // Charge 3 frames pour effet GIF
+                const frames = [];
+                for(let f=1; f<=3; f++) {
+                    frames.push(textureLoader.load(`https://img.youtube.com/vi/${videoData.id}/${f}.jpg`));
+                }
+
+                const material = new THREE.MeshBasicMaterial({
+                    map: frames[0],
+                    side: THREE.DoubleSide
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x, y, z);
                 mesh.lookAt(x*2, y*2, z*2);
-                mesh.userData = { id: data.id, title: data.title, year: data.year, decade: data.decade };
+
+                mesh.userData = {
+                    id: videoData.id,
+                    title: videoData.title,
+                    year: videoData.year,
+                    decade: videoData.decade,
+                    frames: frames,
+                    frameIdx: 0,
+                    lastUpdate: Math.random() * 1000
+                };
 
                 sphereGroup.add(mesh);
                 animatedMeshes.push(mesh);
             }
         }
 
-        function createParticles() {
-            const count = 500;
-            const pos = new Float32Array(count * 3);
-            for(let i=0; i<count*3; i++) pos[i] = (Math.random()-0.5)*30;
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            const mat = new THREE.PointsMaterial({ size: 0.1, color: 0xffffff, transparent: true });
-            const p = new THREE.Points(geo, mat);
-            scene.add(p);
-        }
-
-        // --- LOGIC ---
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-
-            // Animation des lasers
-            lasers.forEach(l => {
-                l.mesh.rotation.y += l.speed;
-                l.mesh.rotation.z = Math.sin(Date.now()*0.001) * 0.5; // Monte et descend
-            });
-
-            // Rotation du sol
-            if(floorGrid) floorGrid.rotation.y += 0.002;
-
-            // Rotation sphère
-            if(isRotating && sphereGroup) {
-                sphereGroup.rotation.y += 0.003;
-                sphereGroup.rotation.x = Math.sin(Date.now()*0.0005)*0.2;
+        function addParticles() {
+            const count = 600;
+            const geom = new THREE.BufferGeometry();
+            const pos = [];
+            for(let i=0; i<count; i++) {
+                const r = 5 + Math.random() * 5;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                pos.push(r * Math.sin(phi) * Math.cos(theta));
+                pos.push(r * Math.sin(phi) * Math.sin(theta));
+                pos.push(r * Math.cos(phi));
             }
-
-            // Pulse Lights (BPM simulé)
-            const pulse = 1 + Math.sin(Date.now() * 0.01) * 0.1;
-            sphereGroup.scale.set(pulse, pulse, pulse);
-
-            renderer.render(scene, camera);
+            geom.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({
+                color: themes[currentTheme].light,
+                size: 0.05,
+                transparent: true,
+                opacity: 0.6
+            });
+            const particles = new THREE.Points(geom, mat);
+            scene.add(particles);
         }
 
+        // --- FILTRES ---
+        function generateFilters() {
+            const container = document.getElementById('yearFilters');
+            let decades = ['ALL'];
+            
+            if(currentTheme === 'noel') decades = ['NOEL'];
+            else if(currentTheme === 'kpop') decades = ['KPOP'];
+            else decades = ['ALL', '70s', '80s', '90s', '00s', '10s', '20s'];
+
+            decades.forEach(d => {
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-1 rounded-full text-xs font-bold transition-all border border-white/10 hover:bg-white/10 ${d === 'ALL' ? 'bg-cyber-blue text-black' : 'text-gray-400'}`;
+                btn.innerText = d;
+                btn.onclick = () => filterByDecade(d, btn);
+                container.appendChild(btn);
+            });
+            
+            document.getElementById('screenCount').innerText = animatedMeshes.length;
+        }
+
+        function filterByDecade(decade, btnElement) {
+            // UI Update
+            const btns = document.getElementById('yearFilters').children;
+            for(let b of btns) {
+                b.className = "px-4 py-1 rounded-full text-xs font-bold transition-all border border-white/10 hover:bg-white/10 text-gray-400";
+            }
+            btnElement.className = "px-4 py-1 rounded-full text-xs font-bold transition-all border border-cyber-blue bg-cyber-blue text-black shadow-glow";
+
+            currentFilter = decade;
+
+            // Logic Update
+            animatedMeshes.forEach(mesh => {
+                if (decade === 'ALL' || decade === 'NOEL' || decade === 'KPOP') {
+                    mesh.visible = true;
+                } else {
+                    mesh.visible = (mesh.userData.decade === decade);
+                }
+                
+                // Petit effet de pop
+                if(mesh.visible) {
+                    mesh.scale.set(0,0,0);
+                    new TWEEN.Tween(mesh.scale).to({x:1, y:1, z:1}, 500).easing(TWEEN.Easing.Back.Out).start();
+                }
+            });
+        }
+
+        // --- INTERACTIONS ---
         function onResize() {
-            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        function onMove(e) {
-            mouse.x = (e.clientX/window.innerWidth)*2-1;
-            mouse.y = -(e.clientY/window.innerHeight)*2+1;
+        function onMouseMove(e) {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(animatedMeshes);
-            document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+            
+            document.body.style.cursor = (intersects.length > 0 && intersects[0].object.visible) ? 'pointer' : 'default';
         }
 
         function onClick(e) {
-            if(e.target.closest('#hologram')) return;
+            if(e.target.closest('#hologram') || e.target.closest('.glass-panel')) return;
+
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(animatedMeshes);
-            if(intersects.length > 0) playHologram(intersects[0].object.userData);
+
+            if (intersects.length > 0 && intersects[0].object.visible) {
+                playHologram(intersects[0].object.userData);
+            }
         }
 
+        // --- LECTEUR HOLOGRAMME ---
         function playHologram(data) {
-            activeVideoCount++;
-            document.getElementById('videoCounter').innerText = activeVideoCount;
             const holo = document.getElementById('hologram');
+            const player = document.getElementById('videoPlayer');
+            
             holo.classList.remove('hidden');
-            
-            document.getElementById('holoTitle').innerText = data.title;
-            document.getElementById('holoYear').innerText = `YEAR ${data.year}`;
-            
-            document.getElementById('videoPlayer').innerHTML = `
+            document.getElementById('hologramTitle').innerText = data.title;
+            document.getElementById('hologramYear').innerText = "YEAR: " + data.year;
+            document.getElementById('hologramDescription').innerText = "Source: YouTube Data";
+            document.getElementById('hologramDescription').style.color = "#9ca3af";
+
+            player.innerHTML = `
                 <iframe width="100%" height="100%" 
-                src="https://www.youtube.com/embed/${data.id}?autoplay=1&modestbranding=1&rel=0" 
-                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+                src="https://www.youtube.com/embed/${data.id}?autoplay=1&modestbranding=1&rel=0&controls=1" 
+                title="HoloPlayer" frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen></iframe>
+            `;
         }
 
         function closeHologram() {
@@ -426,35 +715,76 @@
             document.getElementById('videoPlayer').innerHTML = "";
         }
 
-        function createFilters() {
-            const container = document.getElementById('yearFilters');
-            let tags = ['ALL', '70s', '80s', '90s', '00s', '10s', '20s'];
-            if(currentTheme === 'noel') tags = ['NOËL CLASSICS'];
-            if(currentTheme === 'kpop') tags = ['K-POP HITS'];
-
-            tags.forEach(tag => {
-                const btn = document.createElement('button');
-                btn.className = "px-4 py-1 rounded-full bg-white/10 hover:bg-white/30 text-xs font-bold transition";
-                btn.innerText = tag;
-                btn.onclick = () => filterMeshes(tag);
-                container.appendChild(btn);
-            });
-        }
-
-        function filterMeshes(tag) {
-            animatedMeshes.forEach(mesh => {
-                if(tag === 'ALL' || tag === 'NOËL CLASSICS' || tag === 'K-POP HITS') mesh.visible = true;
-                else mesh.visible = (mesh.userData.decade === tag);
-            });
-        }
-
         function toggleRotation() {
             isRotating = !isRotating;
+            controls.autoRotate = isRotating;
+            const icon = document.querySelector('#toggleRotation i');
+            icon.className = isRotating ? 'fas fa-pause' : 'fas fa-play';
+        }
+
+        function changeSpeed(val) {
+            controls.autoRotateSpeed = parseFloat(val);
         }
 
         function changeTheme() {
-            location.reload();
+            location.reload(); // Simple reset pour changer de thème proprement
         }
+
+        function resetCamera() {
+            controls.reset();
+        }
+
+        // --- ANIMATION LOOP ---
+        // Simple Tween engine minimaliste pour les effets
+        const TWEEN = {
+            tweens: [],
+            Tween: function(target) {
+                this.target = target;
+                this.to = function(dest, duration) {
+                    this.dest = dest;
+                    this.duration = duration;
+                    this.start = Date.now();
+                    this.easing = (t) => t; // Linear default
+                    TWEEN.tweens.push(this);
+                    return this;
+                };
+                this.easing = function(fn) { this.easingFn = fn; return this; };
+                this.start = function() { return this; };
+            },
+            update: function() {
+                const now = Date.now();
+                for(let i=this.tweens.length-1; i>=0; i--) {
+                    const t = this.tweens[i];
+                    const progress = Math.min((now - t.start) / t.duration, 1);
+                    const val = t.easingFn ? t.easingFn(progress) : progress;
+                    
+                    for(let k in t.dest) {
+                        t.target[k] = t.target[k] + (t.dest[k] - t.target[k]) * val; // Simple lerp approximation for demo
+                        if(progress === 1) t.target[k] = t.dest[k];
+                    }
+                    if(progress === 1) this.tweens.splice(i, 1);
+                }
+            },
+            Easing: { Back: { Out: (t) => --t * t * ((1.70158 + 1) * t + 1.70158) + 1 } }
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            TWEEN.update();
+
+            const now = Date.now();
+            animatedMeshes.forEach(mesh => {
+                if(mesh.visible && now - mesh.userData.lastUpdate > 400) {
+                    mesh.userData.frameIdx = (mesh.userData.frameIdx + 1) % 3;
+                    mesh.material.map = mesh.userData.frames[mesh.userData.frameIdx];
+                    mesh.userData.lastUpdate = now;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
     </script>
 </body>
 </html>
