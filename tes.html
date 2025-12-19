@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DiscoSphere - Hyper Hologram Edition</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'art': ['Syne', 'sans-serif'], 'mono': ['Space Mono', 'monospace'] },
+                    colors: { 'void': '#050505', 'neon-blue': '#00f3ff', 'neon-pink': '#ff00ff' },
+                    animation: { 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #030303; color: #fff; overflow: hidden; font-family: 'Space Mono', monospace; margin: 0; }
+        .noise-overlay {
+            position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.5; mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        .mega-title {
+            font-family: 'Syne', sans-serif; font-weight: 800; line-height: 0.9;
+            background: linear-gradient(180deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+            background-clip: text; text-transform: uppercase;
+        }
+        .dock-item { transition: all 0.3s ease; opacity: 0.5; transform-origin: bottom; }
+        .dock-item:hover { opacity: 1; transform: scale(1.1) translateY(-5px); }
+        .dock-item.active { opacity: 1; transform: scale(1.15) translateY(-10px); }
+        .minimal-input { 
+            background: transparent; border: none; border-bottom: 2px solid rgba(255,255,255,0.3); 
+            color: white; font-family: 'Syne'; font-size: 3rem; text-align: center; width: 100%; 
+            outline: none; transition: border-color 0.3s; 
+        }
+        .minimal-input:focus { border-color: #00f3ff; }
+
+        .holo-container-3d {
+            perspective: 1200px;
+            transform-style: preserve-3d;
+        }
+
+        .holo-box-advanced {
+            position: relative;
+            background: rgba(5, 15, 35, 0.7);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 243, 255, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 
+                0 0 30px rgba(0, 243, 255, 0.2),
+                inset 0 0 20px rgba(0, 243, 255, 0.15),
+                0 20px 50px rgba(0,0,0,0.8);
+            transform: rotateY(-8deg) rotateX(3deg);
+            animation: holoFloatAdvanced 7s ease-in-out infinite;
+        }
+
+        .holo-grid-overlay {
+            content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+            background-image: 
+                linear-gradient(transparent 50%, rgba(0, 243, 255, 0.04) 50%),
+                linear-gradient(90deg, transparent 50%, rgba(0, 243, 255, 0.04) 50%);
+            background-size: 3px 3px;
+        }
+
+        .holo-scan-beam {
+            position: absolute; top: 0; left: 0; width: 100%; height: 25%;
+            background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.3), transparent);
+            filter: blur(12px);
+            animation: scanBeam 4s linear infinite;
+            z-index: 4; pointer-events: none;
+        }
+
+        .holo-box-advanced::before, .holo-box-advanced::after {
+            content: ''; position: absolute; inset: 0; z-index: -1;
+            border: inherit; border-radius: inherit;
+            mix-blend-mode: screen; opacity: 0.6; filter: blur(1px);
+        }
+        .holo-box-advanced::before {
+            transform: translateX(-2px);
+            border-color: rgba(0, 255, 255, 0.8);
+            box-shadow: -2px 0 5px rgba(0, 255, 255, 0.4);
+        }
+        .holo-box-advanced::after {
+            transform: translateX(2px);
+            border-color: rgba(255, 0, 255, 0.8);
+            box-shadow: 2px 0 5px rgba(255, 0, 255, 0.4);
+        }
+
+        @keyframes holoFloatAdvanced {
+            0%, 100% { transform: rotateY(-8deg) rotateX(3deg) translateY(0px); }
+            50% { transform: rotateY(-6deg) rotateX(1deg) translateY(-12px); }
+        }
+        @keyframes scanBeam {
+            0% { top: -30%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { top: 130%; opacity: 0; }
+        }
+        
+        ::-webkit-scrollbar { display: none; }
+        * { scrollbar-width: none; }
+    </style>
+</head>
+<body>
+
+    <div class="noise-overlay"></div>
+    <div id="ambient-player" style="display:none;"></div>
+
+    <div onclick="toggleMute()" class="fixed top-6 right-6 z-50 cursor-pointer group mix-blend-difference">
+        <div class="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+            <i id="audioIcon" class="fas fa-volume-mute text-sm"></i>
+        </div>
+    </div>
+
+    <div id="start-screen" class="fixed inset-0 z-40 flex flex-col items-center justify-between bg-black/95 backdrop-blur-3xl p-8 transition-all duration-1000">
+        <div class="flex-1 flex flex-col items-center justify-center relative w-full">
+            <div class="absolute w-[400px] h-[400px] bg-indigo-500/20 rounded-full blur-[120px] animate-pulse-slow"></div>
+            <h1 class="mega-title text-7xl md:text-9xl mb-4 relative z-10 text-center tracking-tighter">DISCO<br>SPHERE</h1>
+            <p class="font-mono text-xs md:text-sm text-gray-400 tracking-[0.3em] uppercase mb-12 relative z-10">Hyper-Visual Experience v5.0</p>
+
+            <button onclick="launchApp()" class="group relative px-10 py-5 bg-white text-black font-art font-bold text-lg rounded-full hover:scale-105 transition-transform overflow-hidden">
+                <span class="relative z-10">INITIALISER LE SYSTÈME</span>
+                <div class="absolute inset-0 bg-gradient-to-r from-cyan-300 via-purple-300 to-pink-300 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </button>
+
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/5 backdrop-blur-xl px-6 py-3 rounded-3xl border border-white/10 flex gap-6 items-end">
+                <div onclick="setTheme('neon')" id="btn-neon" class="dock-item flex flex-col items-center gap-1 cursor-pointer active text-purple-400"><i class="fas fa-bolt text-lg"></i><span class="text-[9px] font-bold tracking-wider">NEON</span></div>
+                <div onclick="setTheme('cyber')" id="btn-cyber" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-cyan-400"><i class="fas fa-microchip text-lg"></i><span class="text-[9px] font-bold tracking-wider">CYBER</span></div>
+                <div onclick="setTheme('afro')" id="btn-afro" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-yellow-500"><i class="fas fa-drum text-lg"></i><span class="text-[9px] font-bold tracking-wider">AFRO</span></div>
+                <div onclick="setTheme('kpop')" id="btn-kpop" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-pink-500"><i class="fas fa-heart text-lg"></i><span class="text-[9px] font-bold tracking-wider">KPOP</span></div>
+                <div onclick="setTheme('french')" id="btn-french" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-blue-500"><i class="fas fa-wine-glass text-lg"></i><span class="text-[9px] font-bold tracking-wider">FRENCH</span></div>
+                <div onclick="setTheme('rap')" id="btn-rap" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-gray-300"><i class="fas fa-crown text-lg"></i><span class="text-[9px] font-bold tracking-wider">RAP</span></div>
+                <div class="w-px h-8 bg-white/10 mx-1"></div>
+                <div onclick="toggleBirthday()" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-green-400"><i class="fas fa-birthday-cake text-lg"></i><span class="text-[9px] font-bold tracking-wider">BDAY</span></div>
+            </div>
+        </div>
+
+        <div id="birthday-section" style="display:none;" class="absolute inset-0 z-50 flex items-center justify-center bg-black/95">
+            <div class="w-full max-w-lg text-center relative p-8">
+                <button onclick="toggleBirthday()" class="absolute top-0 right-0 text-white/50 hover:text-white text-xl font-art">✕</button>
+                <h3 class="text-xl font-mono text-white/60 mb-8">ENTREZ VOTRE ANNÉE</h3>
+                <input type="number" id="user-year" class="minimal-input mb-10" placeholder="2000" min="1950" max="2023">
+                <button onclick="playBirthdayHit()" class="text-lg bg-white text-black px-8 py-3 rounded-full font-bold font-art hover:bg-cyan-300 transition">LANCER LA RECHERCHE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-ui" style="display:none;" class="fixed inset-0 z-0">
+        <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+        <div class="absolute top-8 left-8 z-20 flex flex-col gap-1 mix-blend-difference">
+            <h2 id="current-theme-label" class="font-art text-3xl font-bold text-white">NEON</h2>
+            <div class="flex items-center gap-2 text-[10px] font-mono text-gray-300">
+                <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                <span id="video-count">-- TITRES CHARGÉS</span>
+            </div>
+        </div>
+
+        <div id="filters-bar" class="absolute top-8 left-1/2 transform -translate-x-1/2 z-20 flex gap-3 px-4 py-1.5 bg-white/5 rounded-full backdrop-blur-md border border-white/10"></div>
+
+        <div id="hologram-container" style="display:none;" class="absolute top-1/2 right-8 md:right-16 transform -translate-y-1/2 z-30 holo-container-3d">
+            <div class="holo-box-advanced w-[90vw] md:w-[580px]">
+                <div class="holo-grid-overlay"></div>
+                <div class="holo-scan-beam"></div>
+                
+                <div class="flex justify-between items-center bg-cyan-900/20 px-5 py-3 border-b border-cyan-500/30 relative z-10">
+                    <div>
+                        <h3 id="holo-title" class="font-art text-sm text-cyan-300 truncate w-64 leading-tight">TITRE</h3>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[9px] bg-cyan-500/20 px-1.5 rounded text-cyan-200 font-mono" id="holo-year">0000</span>
+                            <span class="text-[9px] text-cyan-600/70 font-mono tracking-wider">SOURCE: YOUTUBE DB</span>
+                        </div>
+                    </div>
+                    <button onclick="closeHologram()" class="w-7 h-7 rounded-full bg-white/5 hover:bg-red-500/50 hover:text-white text-cyan-300/50 transition flex items-center justify-center"><i class="fas fa-times text-xs"></i></button>
+                </div>
+                
+                <div class="relative aspect-video bg-black/80 z-10">
+                    <div id="video-frame" class="w-full h-full"></div>
+                    <div class="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-transparent pointer-events-none mix-blend-overlay"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-8 z-20">
+            <button onclick="location.reload()" class="font-mono text-xs hover:text-cyan-300 text-gray-500 flex items-center gap-2 transition">
+                <i class="fas fa-power-off"></i> REBOOT SYSTEM
+            </button>
+        </div>
+        <div class="absolute bottom-8 right-8 z-20">
+            <button onclick="toggleRotation()" id="btn-rot" class="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center hover:bg-cyan-400 hover:text-black text-white/70 transition">
+                <i class="fas fa-pause text-xs"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let ambientPlayer;
+        function onYouTubeIframeAPIReady() {
+            ambientPlayer = new YT.Player('ambient-player', {
+                height: '0', width: '0', videoId: 'c71qwikRrsE', 
+                playerVars: { 'autoplay': 1, 'controls': 0, 'loop': 1, 'playlist': 'c71qwikRrsE' },
+                events: { 'onReady': (e) => e.target.mute() } 
+            });
+        }
+        const tag = document.createElement('script'); 
+        tag.src = "https://www.youtube.com/iframe_api"; 
+        document.body.appendChild(tag);
+
+        window.currentThemeKey = 'neon';
+        
+        window.setTheme = (key) => {
+            window.currentThemeKey = key;
+            document.querySelectorAll('.dock-item').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById('btn-'+key);
+            if(btn) btn.classList.add('active');
+        }
+        
+        window.toggleBirthday = () => {
+            const section = document.getElementById('birthday-section');
+            section.style.display = section.style.display === 'none' ? 'flex' : 'none';
+        }
+        
+        window.toggleMute = () => {
+            const icon = document.getElementById('audioIcon');
+            if(ambientPlayer && typeof ambientPlayer.isMuted === 'function') {
+                if(ambientPlayer.isMuted()) {
+                    ambientPlayer.unMute(); 
+                    ambientPlayer.setVolume(40); 
+                    icon.className = "fas fa-volume-up text-sm";
+                } else {
+                    ambientPlayer.mute(); 
+                    icon.className = "fas fa-volume-mute text-sm";
+                }
+            }
+        }
+        
+        window.launchApp = () => {
+            document.getElementById('start-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('app-ui').style.display = 'block';
+                if(ambientPlayer && typeof ambientPlayer.unMute === 'function') { 
+                    ambientPlayer.unMute(); 
+                    ambientPlayer.setVolume(30); 
+                    document.getElementById('audioIcon').className = "fas fa-volume-up text-sm"; 
+                }
+                window.dispatchEvent(new CustomEvent('init3D'));
+            }, 800);
+        }
+        
+        window.closeHologram = () => {
+            document.getElementById('hologram-container').style.display = 'none';
+            document.getElementById('video-frame').innerHTML = '';
+            if(ambientPlayer && typeof ambientPlayer.unMute === 'function') ambientPlayer.unMute();
+        }
+        
+        window.playVideoHolo = (id, title, year) => {
+            if(ambientPlayer && typeof ambientPlayer.mute === 'function') ambientPlayer.mute();
+            const holo = document.getElementById('hologram-container');
+            holo.style.display = 'block';
+            document.getElementById('holo-title').innerText = title;
+            document.getElementById('holo-year').innerText = year;
+            document.getElementById('video-frame').innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+        }
+        
+        window.playBirthdayHit = () => {
+            const year = parseInt(document.getElementById('user-year').value);
+            if(isNaN(year) || year < 1950 || year > 2023) {
+                alert('Année invalide. Entrez une année entre 1950 et 2023.');
+                return;
+            }
+            window.pendingBirthday = { year: year };
+            toggleBirthday();
+            launchApp();
+        }
+        
+        window.toggleRotation = () => {
+            if(window.controls) {
+                window.controls.autoRotate = !window.controls.autoRotate;
+                const btn = document.getElementById('btn-rot');
+                const icon = btn.querySelector('i');
+                icon.className = window.controls.autoRotate ? 'fas fa-pause text-xs' : 'fas fa-play text-xs';
+                btn.classList.toggle('bg-cyan-400');
+                btn.classList.toggle('text-black');
+            }
+        }
+    </script>
+
+    <script type="importmap">
+        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const DB = [
+            {id: "K5KAc5CoCuk", title: "Indila - Dernière Danse", year: 2013, theme: "french", decade: "10s"},
+            {id: "5dbEhBKGOtY", title: "Daft Punk - Get Lucky", year: 2013, theme: "french", decade: "10s"},
+            {id: "AzaTyxMduH4", title: "Céline Dion - Pour que tu m'aimes encore", year: 1995, theme: "french", decade: "90s"},
+            {id: "iPGgnzc34tY", title: "Aya Nakamura - Djadja", year: 2018, theme: "french", decade: "10s"},
+            {id: "oiKj0Z_Xnjc", title: "Stromae - Papaoutai", year: 2013, theme: "french", decade: "10s"},
+            {id: "CW7gfrTlr0Y", title: "Stromae - Santé", year: 2021, theme: "french", decade: "20s"}, 
+            {id: "H2p1a7_JkKM", title: "Angèle - Balance Ton Quoi", year: 2019, theme: "french", decade: "10s"},
+            {id: "YVkUvmDQ3HY", title: "Eminem - Without Me", year: 2002, theme: "rap", decade: "00s"},
+            {id: "5qm8PH4xAss", title: "50 Cent - In Da Club", year: 2003, theme: "rap", decade: "00s"},
+            {id: "fPO76Jlnz6c", title: "Coolio - Gangsta's Paradise", year: 1995, theme: "rap", decade: "90s"},
+            {id: "_CL6n0FJZpk", title: "Dr. Dre - Still D.R.E.", year: 1999, theme: "rap", decade: "90s"},
+            {id: "Dst9gZkq1a8", title: "Travis Scott - Goosebumps", year: 2016, theme: "rap", decade: "10s"},
+            {id: "tvTRZJ-4EyI", title: "Kendrick Lamar - Humble", year: 2017, theme: "rap", decade: "10s"},
+            {id: "V1lVkgtD2QM", title: "PNL - Au DD", year: 2019, theme: "rap", decade: "10s"},
+            {id: "0T8k3l7Q0bI", title: "Ninho - Lettre à une femme", year: 2020, theme: "rap", decade: "20s"},
+            {id: "O6Nca7hQ_Ew", title: "Rema - Calm Down", year: 2022, theme: "afro", decade: "20s"},
+            {id: "421w1j87fEM", title: "Burna Boy - Last Last", year: 2022, theme: "afro", decade: "20s"},
+            {id: "lcx7ajXrWkU", title: "Davido - Unavailable", year: 2023, theme: "afro", decade: "20s"},
+            {id: "XOI-FCIM88s", title: "Tyla - Water", year: 2023, theme: "afro", decade: "20s"},
+            {id: "W821s38bGB4", title: "Tyler ICU - Mnike", year: 2023, theme: "afro", decade: "20s"},
+            {id: "Csq-z1WD5qE", title: "Ayra Starr - Rush", year: 2022, theme: "afro", decade: "20s"},
+            {id: "Ff2gfifu71g", title: "Uncle Waffles - Tanzania", year: 2022, theme: "afro", decade: "20s"},
+            {id: "aAkMkVFwAoo", title: "Mariah Carey - All I Want", year: 1994, theme: "noel", decade: "noel"},
+            {id: "E8gmARGvPlI", title: "Wham! - Last Christmas", year: 1984, theme: "noel", decade: "noel"},
+            {id: "R_vmuL0gjU0", title: "Bobby Helms - Jingle Bell", year: 1957, theme: "noel", decade: "noel"},
+            {id: "gset79KMmt0", title: "Sia - Snowman", year: 2017, theme: "noel", decade: "noel"},
+            {id: "9bZkp7q19f0", title: "PSY - GANGNAM STYLE", year: 2012, theme: "kpop", decade: "10s"},
+            {id: "gdZLi9oWNZg", title: "BTS - Dynamite", year: 2020, theme: "kpop", decade: "20s"},
+            {id: "IHNzOHi8sJs", title: "BLACKPINK - DDU-DU", year: 2018, theme: "kpop", decade: "10s"},
+            {id: "XsX3ATc3FbA", title: "BTS - Boy With Luv", year: 2019, theme: "kpop", decade: "10s"},
+            {id: "3JWTaaS7LdU", title: "Bee Gees - Stayin' Alive", year: 1977, theme: "neon", decade: "70s"},
+            {id: "dQw4w9WgXcQ", title: "Rick Astley - Never Gonna Give", year: 1987, theme: "neon", decade: "80s"},
+            {id: "PIb6AZdTr-A", title: "Cyndi Lauper - Girls Just Want", year: 1983, theme: "neon", decade: "80s"},
+            {id: "kIDWgqDBNXA", title: "Christina Aguilera - Genie", year: 1999, theme: "retro", decade: "90s"},
+            {id: "V0PisGe66mY", title: "Las Ketchup - Aserejé", year: 2002, theme: "retro", decade: "00s"},
+            {id: "7-7knsP2n5w", title: "Shakira - La La La", year: 2014, theme: "cyber", decade: "10s"},
+            {id: "hcm55lU9knw", title: "Michel Teló - Ai Se Eu Te Pego", year: 2011, theme: "cyber", decade: "10s"},
+            {id: "mP0VHJYFOAU", title: "The Weeknd - Blinding Lights", year: 2020, theme: "neon", decade: "20s"}
+        ];
+
+        const CONFIG = {
+            neon: { bg: 0x0a0510, color: 0xc084fc, filter: null },
+            cyber: { bg: 0x050a10, color: 0x22d3ee, filter: null },
+            afro: { bg: 0x1a1000, color: 0xeab308, filter: 'afro' },
+            kpop: { bg: 0x1a0510, color: 0xec4899, filter: 'kpop' },
+            noel: { bg: 0x1a0505, color: 0xef4444, filter: 'noel' },
+            french: { bg: 0x050a1a, color: 0x3b82f6, filter: 'french' },
+            rap: { bg: 0x0a0a0a, color: 0xd1d5db, filter: 'rap' }
+        };
+
+        let scene, camera, renderer, controls, raycaster, mouse, sphereGroup, meshes = [];
+
+        window.addEventListener('init3D', () => {
+            init();
+            if(window.pendingBirthday) {
+                const y = window.pendingBirthday.year;
+                let hit = DB.find(v => v.year === y);
+                if(!hit) hit = {id: "dQw4w9WgXcQ", title: `HIT DE ${y} (Non trouvé)`, year: y};
+                setTimeout(() => window.playVideoHolo(hit.id, hit.title, hit.year), 1500);
+                window.pendingBirthday = null;
+            }
+        });
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+            
+            meshes = [];
+            
+            const themeKey = window.currentThemeKey;
+            const conf = CONFIG[themeKey];
+            
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(conf.bg, 0.035);
+            scene.background = new THREE.Color(conf.bg);
+            
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
+            camera.position.z = 9;
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+            
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; 
+            controls.autoRotate = true; 
+            controls.autoRotateSpeed = 0.6;
+            
+            window.controls = controls;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4); 
+            scene.add(ambient);
+            const point = new THREE.PointLight(conf.color, 2.5, 30); 
+            point.position.set(5,5,5); 
+            scene.add(point);
+
+            createSphere(conf); 
+            createFilters(conf);
+            
+            raycaster = new THREE.Raycaster(); 
+            mouse = new THREE.Vector2();
+            
+            window.addEventListener('resize', onResize); 
+            window.addEventListener('mousemove', onMouseMove); 
+            window.addEventListener('click', onClick);
+            
+            animate();
+
+            document.getElementById('current-theme-label').innerText = themeKey.toUpperCase();
+            document.getElementById('current-theme-label').style.color = '#' + conf.color.toString(16).padStart(6, '0');
+            document.getElementById('video-count').innerText = meshes.length + " TITRES INIT.";
+        }
+
+        function createSphere(conf) {
+            if(sphereGroup) {
+                scene.remove(sphereGroup);
+                sphereGroup.traverse((obj) => {
+                    if(obj.geometry) obj.geometry.dispose();
+                    if(obj.material) {
+                        if(obj.material.map) obj.material.map.dispose();
+                        obj.material.dispose();
+                    }
+                });
+            }
+            
+            sphereGroup = new THREE.Group(); 
+            scene.add(sphereGroup);
+            
+            let data = DB;
+            if(conf.filter) {
+                data = DB.filter(v => v.theme === conf.filter);
+            } else {
+                data = DB.filter(v => !['afro', 'kpop', 'noel', 'french', 'rap'].includes(v.theme));
+            }
+
+            const count = Math.min(130, data.length * 3);
+            const radius = 4.2;
+            const loader = new THREE.TextureLoader();
+            const geometry = new THREE.PlaneGeometry(0.65, 0.48);
+
+            for(let i=0; i<count; i++) {
+                const phi = Math.acos(-1 + (2*i)/count); 
+                const theta = Math.sqrt(count * Math.PI) * phi;
+                const x = radius * Math.cos(theta) * Math.sin(phi); 
+                const y = radius * Math.sin(theta) * Math.sin(phi); 
+                const z = radius * Math.cos(phi);
+                
+                const item = data[i % data.length];
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: conf.color, 
+                    side: THREE.DoubleSide 
+                });
+                
+                loader.load(
+                    `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`, 
+                    (tex) => { 
+                        material.map = tex; 
+                        material.color.setHex(0xffffff); 
+                        material.needsUpdate = true; 
+                    },
+                    undefined,
+                    (err) => {
+                        console.warn('Failed to load texture:', err);
+                    }
+                );
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x, y, z); 
+                mesh.lookAt(x*2, y*2, z*2);
+                mesh.userData = item; 
+                sphereGroup.add(mesh); 
+                meshes.push(mesh);
+            }
+        }
+
+        function createFilters(conf) {
+            const bar = document.getElementById('filters-bar'); 
+            bar.innerHTML = '';
+            
+            if(conf.filter) return;
+            
+            ['ALL', '70s', '80s', '90s', '00s', '10s', '20s'].forEach(d => {
+                const btn = document.createElement('button'); 
+                btn.innerText = d;
+                btn.className = "px-3 py-1 rounded-full text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/10 transition border border-transparent";
+                if(d==='ALL') btn.className = "px-3 py-1 rounded-full text-[10px] font-bold text-cyan-300 border border-cyan-300/50 bg-cyan-900/20 transition";
+                
+                btn.onclick = (e) => {
+                    Array.from(bar.children).forEach(b => {
+                        b.className = "px-3 py-1 rounded-full text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/10 transition border border-transparent";
+                    });
+                    e.target.className = "px-3 py-1 rounded-full text-[10px] font-bold text-cyan-300 border border-cyan-300/50 bg-cyan-900/20 transition shadow-sm";
+                    meshes.forEach(m => {
+                        m.visible = (d === 'ALL' || m.userData.decade === d);
+                    });
+                };
+                bar.appendChild(btn);
+            });
+        }
+
+        function onResize() { 
+            camera.aspect = window.innerWidth/window.innerHeight; 
+            camera.updateProjectionMatrix(); 
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+        }
+        
+        function onMouseMove(e) { 
+            mouse.x = (e.clientX/window.innerWidth)*2-1; 
+            mouse.y = -(e.clientY/window.innerHeight)*2+1; 
+            raycaster.setFromCamera(mouse, camera); 
+            const intersects = raycaster.intersectObjects(meshes); 
+            document.body.style.cursor = (intersects.length>0 && intersects[0].object.visible) ? 'pointer' : 'default'; 
+        }
+        
+        function onClick(e) { 
+            if(e.target.closest('.holo-box-advanced') || e.target.closest('.dock-item') || e.target.closest('button')) return; 
+            raycaster.setFromCamera(mouse, camera); 
+            const intersects = raycaster.intersectObjects(meshes); 
+            if(intersects.length>0 && intersects[0].object.visible) {
+                window.playVideoHolo(
+                    intersects[0].object.userData.id, 
+                    intersects[0].object.userData.title, 
+                    intersects[0].object.userData.year
+                );
+            }
+        }
+        
+        function animate() { 
+            requestAnimationFrame(animate); 
+            if(controls) controls.update(); 
+            if(renderer && scene && camera) renderer.render(scene, camera); 
+        }
+    </script>
