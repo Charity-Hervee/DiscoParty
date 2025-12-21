@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DiscoParty</title>
+    <link rel="shortcut icon" href="/dico_logo.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'art': ['Syne', 'sans-serif'], 'mono': ['Space Mono', 'monospace'] },
+                    colors: { 'void': '#050505', 'neon-blue': '#00f3ff', 'neon-pink': '#ff00ff' },
+                    animation: { 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #030303; color: #fff; overflow: hidden; font-family: 'Space Mono', monospace; margin: 0; -webkit-tap-highlight-color: transparent; }
+        .noise-overlay { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.5; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); }
+        .mega-title { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 0.9; background: linear-gradient(180deg, #fff 0%, #888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-transform: uppercase; }
+        .dock-item { transition: all 0.3s ease; opacity: 0.5; transform-origin: bottom; }
+        .dock-item:hover { opacity: 1; transform: scale(1.1) translateY(-5px); }
+        .dock-item.active { opacity: 1; transform: scale(1.15) translateY(-10px); }
+        .holo-container-3d { perspective: 1200px; transform-style: preserve-3d; }
+        .holo-box-advanced { position: relative; background: rgba(5, 15, 35, 0.7); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(0, 243, 255, 0.6); border-radius: 12px; overflow: hidden; box-shadow: 0 0 30px rgba(0, 243, 255, 0.2), inset 0 0 20px rgba(0, 243, 255, 0.15), 0 20px 50px rgba(0, 0, 0, 0.8); transform: rotateY(-8deg) rotateX(3deg); animation: holoFloatAdvanced 7s ease-in-out infinite; transition: all 0.5s ease; }
+        .holo-grid-overlay { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; background-image: linear-gradient(transparent 50%, rgba(0, 243, 255, 0.04) 50%), linear-gradient(90deg, transparent 50%, rgba(0, 243, 255, 0.04) 50%); background-size: 3px 3px; }
+        .holo-scan-beam { position: absolute; top: 0; left: 0; width: 100%; height: 25%; background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.3), transparent); filter: blur(12px); animation: scanBeam 4s linear infinite; z-index: 4; pointer-events: none; }
+        .holo-box-advanced::before, .holo-box-advanced::after { content: ''; position: absolute; inset: 0; z-index: -1; border: inherit; border-radius: inherit; mix-blend-mode: screen; opacity: 0.6; filter: blur(1px); }
+        .holo-box-advanced::before { transform: translateX(-2px); border-color: rgba(0, 255, 255, 0.8); box-shadow: -2px 0 5px rgba(0, 255, 255, 0.4); }
+        .holo-box-advanced::after { transform: translateX(2px); border-color: rgba(255, 0, 255, 0.8); box-shadow: 2px 0 5px rgba(255, 0, 255, 0.4); }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px #ffffff; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 2px; }
+        @keyframes holoFloatAdvanced { 0%, 100% { transform: rotateY(-8deg) rotateX(3deg) translateY(0px); } 50% { transform: rotateY(-6deg) rotateX(1deg) translateY(-12px); } }
+        @keyframes scanBeam { 0% { top: -30%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 130%; opacity: 0; } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        ::-webkit-scrollbar { display: none; }
+        * { scrollbar-width: none; }
+    </style>
+</head>
+
+<body>
+
+    <div class="noise-overlay"></div>
+
+    <div id="start-screen" class="fixed inset-0 z-40 flex flex-col items-center justify-between bg-black/95 backdrop-blur-3xl p-4 md:p-8 transition-all duration-1000">
+        <div class="flex-1 flex flex-col items-center justify-center relative w-full">
+            <div class="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] bg-indigo-500/20 rounded-full blur-[80px] md:blur-[120px] animate-pulse-slow"></div>
+            <h1 class="mega-title text-5xl sm:text-7xl md:text-9xl mb-4 relative z-10 text-center tracking-tighter">DISCO<br>PARTY</h1>
+            <p class="font-mono text-[10px] md:text-sm text-gray-400 tracking-[0.3em] uppercase mb-12 relative z-10 text-center">Remember those moments</p>
+
+            <button onclick="launchApp()" class="group relative px-8 py-4 md:px-10 md:py-5 bg-white text-black font-art font-bold text-base md:text-lg rounded-full hover:scale-105 transition-transform overflow-hidden shadow-[0_0_20px_rgba(255,255,255,0.3)] cursor-pointer z-50">
+                <span class="relative z-10">INITIALISER LE SYSTÈME</span>
+                <div class="absolute inset-0 bg-gradient-to-r from-cyan-300 via-purple-300 to-pink-300 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </button>
+
+            <div class="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 bg-white/5 backdrop-blur-xl px-4 py-3 md:px-6 md:py-3 rounded-2xl md:rounded-3xl border border-white/10 flex gap-3 md:gap-6 items-end w-max max-w-[95vw] overflow-x-auto no-scrollbar">
+                <div onclick="setTheme('pop')" id="btn-pop" class="dock-item flex flex-col items-center gap-1 cursor-pointer active text-fuchsia-400 min-w-[40px]"><i class="fas fa-music text-base md:text-lg"></i><span class="text-[8px] md:text-[9px] font-bold tracking-wider">POP</span></div>
+                <div onclick="setTheme('afro')" id="btn-afro" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-yellow-500 min-w-[40px]"><i class="fas fa-drum text-base md:text-lg"></i><span class="text-[8px] md:text-[9px] font-bold tracking-wider">AFRO</span></div>
+                <div onclick="setTheme('kpop')" id="btn-kpop" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-pink-500 min-w-[40px]"><i class="fas fa-heart text-base md:text-lg"></i><span class="text-[8px] md:text-[9px] font-bold tracking-wider">KPOP</span></div>
+                <div onclick="setTheme('french')" id="btn-french" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-blue-500 min-w-[40px]"><i class="fas fa-wine-glass text-base md:text-lg"></i><span class="text-[8px] md:text-[9px] font-bold tracking-wider">FRENCH</span></div>
+                <div onclick="setTheme('rap')" id="btn-rap" class="dock-item flex flex-col items-center gap-1 cursor-pointer text-gray-300 min-w-[40px]"><i class="fas fa-crown text-base md:text-lg"></i><span class="text-[8px] md:text-[9px] font-bold tracking-wider">RAP</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-ui" style="display:none;" class="fixed inset-0 z-0 transition-all duration-500">
+        <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+        <div class="absolute z-20 flex flex-col gap-1 mix-blend-difference pointer-events-none transition-opacity duration-300
+                    top-4 left-1/2 -translate-x-1/2 items-center text-center w-full
+                    md:top-8 md:left-8 md:translate-x-0 md:items-start md:text-left md:w-auto" id="ui-info">
+            <h2 id="current-theme-label" class="font-art text-2xl md:text-3xl font-bold text-white">POP</h2>
+            <div class="flex items-center gap-2 text-[9px] md:text-[10px] font-mono text-gray-300">
+                <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                <span id="video-count">-- TITRES CHARGÉS</span>
+            </div>
+        </div>
+
+        <div id="filters-bar" class="absolute z-20 flex gap-2 px-3 py-1.5 bg-white/5 rounded-full backdrop-blur-md border border-white/10 max-w-[95vw] overflow-x-auto no-scrollbar whitespace-nowrap transition-all duration-300
+                    top-20 left-1/2 -translate-x-1/2
+                    md:top-8 md:gap-3 md:px-4 md:py-1.5">
+        </div>
+
+        <div class="absolute bottom-24 left-6 z-20 w-32 md:w-48 flex flex-col gap-2 bg-black/30 backdrop-blur-md p-3 rounded-xl border border-white/10">
+            <label class="text-[9px] font-mono text-gray-400 uppercase tracking-wider flex justify-between">
+                <span>Zoom / Taille</span>
+                <i class="fas fa-expand-alt"></i>
+            </label>
+            <input type="range" id="size-slider" min="0.2" max="2.0" step="0.1" value="1.0" oninput="updateSphereScale(this.value)">
+        </div>
+
+        <div id="hologram-container" style="display:none;" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 holo-container-3d transition-all duration-700 ease-in-out">
+            <div class="holo-box-advanced w-[90vw] max-w-[400px] md:max-w-[500px]">
+                <div class="holo-grid-overlay"></div>
+                <div class="holo-scan-beam"></div>
+                <div class="flex justify-between items-center bg-cyan-900/20 px-4 py-2 md:px-5 md:py-3 border-b border-cyan-500/30 relative z-10">
+                    <div class="overflow-hidden">
+                        <h3 id="holo-title" class="font-art text-xs md:text-sm text-cyan-300 truncate w-48 md:w-64 leading-tight">TITRE</h3>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[8px] md:text-[9px] bg-cyan-500/20 px-1.5 rounded text-cyan-200 font-mono" id="holo-year">0000</span>
+                            <span class="text-[8px] md:text-[9px] text-cyan-600/70 font-mono tracking-wider">YOUTUBE DB</span>
+                        </div>
+                    </div>
+                    <button onclick="closeHologram()" class="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/5 hover:bg-red-500/50 hover:text-white text-cyan-300/50 transition flex items-center justify-center shrink-0 ml-2"><i class="fas fa-times text-[10px] md:text-xs"></i></button>
+                </div>
+                <div class="relative aspect-video bg-black/80 z-10">
+                    <div id="video-frame" class="w-full h-full"></div>
+                    <div class="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 to-transparent pointer-events-none mix-blend-overlay"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 left-6 md:bottom-8 md:left-8 z-20">
+            <button onclick="location.reload()" class="font-mono text-[10px] md:text-xs hover:text-cyan-300 text-gray-500 flex items-center gap-2 transition bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full md:bg-transparent md:p-0"><i class="fas fa-power-off"></i> MENU</button>
+        </div>
+        <div class="absolute bottom-6 right-6 md:bottom-8 md:right-8 z-20">
+             <button onclick="toggleRotation()" id="btn-rot" class="w-8 h-8 md:w-10 md:h-10 rounded-full border border-white/20 flex items-center justify-center hover:bg-cyan-400 hover:text-black text-white/70 transition bg-black/20 backdrop-blur-sm"><i class="fas fa-pause text-[10px] md:text-xs"></i></button>
+        </div>
+
+        <div class="absolute bottom-1 md:bottom-2 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center gap-1 md:gap-2 w-full pointer-events-none">
+            <div class="flex gap-4 pointer-events-auto">
+                <a href="https://www.instagram.com/chari.labs/" target="_blank" class="text-white/50 hover:text-white hover:scale-110 transition-all duration-300"><i class="fab fa-instagram text-lg md:text-xl"></i></a>
+                <a href="https://github.com/Charity-Hervee" target="_blank" class="text-white/50 hover:text-white hover:scale-110 transition-all duration-300"><i class="fab fa-github text-lg md:text-xl"></i></a>
+            </div>
+            <p class="font-mono text-[8px] md:text-[9px] text-white/30 tracking-widest uppercase text-center w-full px-2">&copy; 2025 | Made by Charity Design & Conception</p>
+        </div>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- GLOBAL VARIABLES ---
+        let scene, camera, renderer, controls, raycaster, mouse, sphereGroup, meshes = [];
+        let ambientPlayer = null;
+        
+        // --- YOUTUBE API LOADER ---
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+
+        // --- STATE VARIABLES ---
+        window.currentThemeKey = 'pop';
+        let targetSpherePos = new THREE.Vector3(0, 0, 0);
+        let userScaleFactor = 1.0;
+        let isVideoActive = false;
+
+        // --- DATABASE ---
+        const DB = [
+            // FRENCH
+            { id: "K5KAc5CoCuk", title: "Indila - Dernière Danse", year: 2013, theme: "french", decade: "10s" },
+            { id: "5dbEhBKGOtY", title: "Daft Punk - Get Lucky", year: 2013, theme: "french", decade: "10s" },
+            { id: "AzaTyxMduH4", title: "Céline Dion - Pour que tu m'aimes encore", year: 1995, theme: "french", decade: "90s" },
+            { id: "vtNJMAyeP0s", title: "Indila - Tourner dans le vide", year: 2018, theme: "french", decade: "10s" },
+            { id: "oiKj0Z_Xnjc", title: "Stromae - Papaoutai", year: 2013, theme: "french", decade: "10s" },
+            { id: "CW7gfrTlr0Y", title: "Stromae - Santé", year: 2021, theme: "french", decade: "20s" },
+            { id: "Hi7Rx3En7-k", title: "Angèle - Balance Ton Quoi", year: 2019, theme: "french", decade: "10s" },
+            { id: "CAMWdvo71ls", title: "Stromae - Tous les mêmes", year: 2009, theme: "french", decade: "00s" },
+            { id: "0TFNGRYMz1U", title: "Zaz - Je Veux", year: 2010, theme: "french", decade: "10s" },
+            { id: "3r9vJI5OiV8", title: "Naps - La Kiffance", year: 2020, theme: "french", decade: "20s" },
+            { id: "VHoT4N43jK8", title: "Stromae - Alors on Danse", year: 2009, theme: "french", decade: "10s" },
+            { id: "S_xH7noaqTA", title: "Stromae - Formidable", year: 2013, theme: "french", decade: "10s" },
+            { id: "5lzbP4ddQz8", title: "Ninho - Zipette", year: 2020, theme: "french", decade: "20s" },
+            { id: "lgHGU8gqz9U", title: "France Gall - Ella, Elle l'a", year: 1998, theme: "french", decade: "90s" },
+            { id: "8AF-Sm8d8yk", title: "Bigflo & Oli – Dommage", year: 2017, theme: "french", decade: "10s" },
+            { id: "ozthKn07Ei4", title: "Dadju & Tayc – I love you", year: 2024, theme: "french", decade: "20s" },
+            { id: "j-RpvIuazmc", title: "Stromae ft Pomme - Ma Meilleure Ennemie", year: 2025, theme: "french", decade: "20s" },
+            { id: "jR3y0bxKAvg", title: "MHD – Bella", year: 2018, theme: "french", decade: "10s" },
+            { id: "efuKG2xZev0", title: "Keblack – Bazardée", year: 2016, theme: "french", decade: "10s" },
+            { id: "9Z-NbQvhzKM", title: "Vanessa Paradis & M - La seine", year: 2011, theme: "french", decade: "10s" },            
+            { id: "nq2cr1D3bvQ", title: "TAL - Le Sens de la Vie", year: 2012, theme: "french", decade: "10s" },
+            { id: "KAOmC5qT02w", title: "Indochine - J'ai demandé à la lune", year: 2009, theme: "french", decade: "00s" },
+            { id: "2bjk26RwjyU", title: "OrelSan - Basique", year: 2017, theme: "french", decade: "10s" },
+            // RAP
+            { id: "YVkUvmDQ3HY", title: "Eminem - Without Me", year: 2002, theme: "rap", decade: "00s" },
+            { id: "5qm8PH4xAss", title: "50 Cent - In Da Club", year: 2003, theme: "rap", decade: "00s" },
+            { id: "fPO76Jlnz6c", title: "Coolio - Gangsta's Paradise", year: 1995, theme: "rap", decade: "90s" },
+            { id: "_CL6n0FJZpk", title: "Dr. Dre - Still D.R.E.", year: 1999, theme: "rap", decade: "90s" },
+            { id: "Dst9gZkq1a8", title: "Travis Scott - Goosebumps", year: 2016, theme: "rap", decade: "10s" },
+            { id: "MXaqpJmX7JE", title: "Kendrick Lamar - HUMBLE.", year: 2017, theme: "rap", decade: "10s" },
+            { id: "BtyHYIpykN0", title: "PNL - Au DD", year: 2019, theme: "rap", decade: "10s" },
+            { id: "ifNfpzkoY9s", title: "Ninho - Lettre à une femme", year: 2020, theme: "rap", decade: "20s" },
+            { id: "glEiPXAYE-U", title: "Notorious B.I.G. - Hypnotize", year: 1997, theme: "rap", decade: "90s" },
+            { id: "GtUVQei3nX4", title: "Snoop Dogg - Drop It Like It's Hot", year: 2004, theme: "rap", decade: "00s" },
+            { id: "r7qovpFAGrQ", title: "Lil Nas X - Old Town Road", year: 2019, theme: "rap", decade: "10s" },
+            { id: "L_jWHffIx5E", title: "Smash Mouth - All Star", year: 1999, theme: "rap", decade: "90s" },
+            { id: "Stet_4bnclk", title: "Booba - DKR", year: 2016, theme: "rap", decade: "10s" },
+            { id: "uxpDa-c-4Mc", title: "Drake - Hotline Bling", year: 2015, theme: "rap", decade: "10s" },
+            { id: "pSY3i5XHHXo", title: "Central Cee x Dave - Sprinter", year: 2023, theme: "rap", decade: "20s" },
+            { id: "pDddlvCfTiw", title: "CENTRAL CEE FT. LIL BABY - BAND4BAND", year: 2024, theme: "rap", decade: "20s" },
+            { id: "oorVWW9ywG0", title: "POP SMOKE - DIOR", year: 2019, theme: "rap", decade: "10s" },
+            { id: "UNZqm3dxd2w", title: "Roddy Ricch - The Box", year: 2020, theme: "rap", decade: "20s" },
+            { id: "xvZqHgFz51I", title: "Future - Mask Off", year: 2017, theme: "rap", decade: "10s" },
+            { id: "H58vbez_m4E", title: "Kendrick Lamar - Not Like Us", year: 2024, theme: "rap", decade: "20s" },
+            // AFROBEATS
+            { id: "CQLsdm1ZYAw", title: "Rema - Calm Down", year: 2022, theme: "afro", decade: "20s" },
+            { id: "421w1j87fEM", title: "Burna Boy - Last Last", year: 2022, theme: "afro", decade: "20s" },
+            { id: "OSBan_sH_b8", title: "Davido - UNAVAILABLE", year: 2023, theme: "afro", decade: "20s" },
+            { id: "XoiOOiuH8iI", title: "Tyla - Water", year: 2023, theme: "afro", decade: "20s" },
+            { id: "g_hgm2Mf6Ag", title: "Tyler ICU - Mnike", year: 2023, theme: "afro", decade: "20s" },
+            { id: "crtQSTYWtqE", title: "Ayra Starr - Rush", year: 2022, theme: "afro", decade: "20s" },
+            { id: "sdXQKVQEq5E", title: "Wizkid - Essence", year: 2020, theme: "afro", decade: "20s" },
+            { id: "ZqfpOZTlWZk", title: "DJ Spark – Afrobeat Mix", year: 2021, theme: "afro", decade: "20s" },
+            { id: "XmpytJku3es", title: "Asake - Lonely At The Top", year: 2023, theme: "afro", decade: "20s" },
+            { id: "VZEebr6oGoQ", title: "Kabza De Small - Asibe Happy", year: 2020, theme: "afro", decade: "20s" },
+            { id: "7Y8j6mB1ANc", title: "Shan'L - Tchizambengue", year: 2018, theme: "afro" },
+            { id: "iuEk-pV3nu8", title: "Don'zer - Goudronnier", year: 2017, theme: "afro" },
+            { id: "dVsIyEiCQ_w", title: "Creol - Bonobo", year: 2017, theme: "afro" },
+            { id: "Er1YVr0zB6s", title: "Espoir La Tigresse - Abiane", year: 2021, theme: "afro" },
+            { id: "F0G7j1UdjME", title: "Kocee x KS Bloom - Stranger ", year: 2025, theme: "afro" },
+            { id: "whcyK3CJkLU", title: "Revolution - Kelly", year: 2018, theme: "afro" },
+            { id: "xugRJY3FNl4", title: "Josée Delatour - Y'a pas photo", year: 2019, theme: "afro" },
+            { id: "paDINb3Rksw", title: "Bracket - Mama Africa", year: 2014, theme: "afro" },
+            { id: "uZ-_HIoEBE8", title: "Davido - Aye", year: 2014, theme: "afro" },
+            { id: "ipZvlG-wwWk", title: "Sarkodie - Adonai", year: 2014, theme: "afro" },
+            { id: "CwTLzYZWDeg", title: "Papou - AGO", year: 2013, theme: "afro" },
+            { id: "8BYzlMmnp6g", title: "Daysie - Nadré ", year: 2018, theme: "afro" },
+            { id: "zUU1bIWpH5c", title: "Rema - Dumebi ", year: 2019, theme: "afro" },
+            { id: "vb4a7wgAVeo", title: "The Shin Sekaï - Aime-moi demain", year: 2016, theme: "afro" },
+            { id: "skajRgiUNLY", title: "REVOLUTION - JE BOIS PLUS", year: 2016, theme: "afro" },
+            { id: "O9P1g9q1JtM", title: "Toofan - TERÉ TERÉ", year: 2016, theme: "afro" },
+            { id: "Ws6xCV3En_M", title: "Chidinma - Fallen in Love ", year: 2016, theme: "afro" },
+            { id: "UXyUMMMETsA", title: "Korede Bello - Romantic", year: 2015, theme: "afro" },
+            { id: "JMRguFa7NjE", title: "PSquare - Bank Alert", year: 2016, theme: "afro" },
+            { id: "Tb4X1BWNO5k", title: "Runtown - Mad Over You", year: 2016, theme: "afro" },
+            { id: "8YhAFBOSk1U", title: "Tekno - Pana", year: 2016, theme: "afro" },
+            // KPOP
+            { id: "9bZkp7q19f0", title: "PSY - GANGNAM STYLE", year: 2012, theme: "kpop", decade: "10s" },
+            { id: "gdZLi9oWNZg", title: "BTS - Dynamite", year: 2020, theme: "kpop", decade: "20s" },
+            { id: "IHNzOHi8sJs", title: "BLACKPINK - DDU-DU DDU-DU", year: 2018, theme: "kpop", decade: "10s" },
+            { id: "XsX3ATc3FbA", title: "BTS - Boy With Luv", year: 2019, theme: "kpop", decade: "10s" },
+            { id: "ePpPVE-GGJw", title: "TWICE - TT", year: 2016, theme: "kpop", decade: "10s" },
+            { id: "ioNng23DkIM", title: "BLACKPINK - How You Like That", year: 2020, theme: "kpop", decade: "20s" },
+            { id: "2S24-y0Ij3Y", title: "BLACKPINK - Kill This Love", year: 2019, theme: "kpop", decade: "10s" },
+            { id: "TQTlCHxyuu8", title: "Stray Kids - God's Menu", year: 2020, theme: "kpop", decade: "20s" },
+            { id: "2ips2mM7Zqw", title: "BIGBANG - Bang Bang Bang", year: 2015, theme: "kpop", decade: "10s" },
+            { id: "fE2h3lGlOsk", title: "ITZY - Wannabe", year: 2020, theme: "kpop", decade: "20s" },
+            { id: "gQlMMD8auMs", title: "BLACKPINK - Pink Venom", year: 2022, theme: "kpop", decade: "20s" },
+            { id: "Z_BhMhZpAug", title: "ATEEZ - WONDERLAND", year: 2019, theme: "kpop", decade: "10s" },
+            { id: "Vd9QkWsd5p4", title: "TXT - Blue Hour", year: 2020, theme: "kpop", decade: "20s" },
+            { id: "KhTeiaCezwM", title: "MAMAMOO - HIP", year: 2019, theme: "kpop", decade: "10s" },
+            { id: "qa51zme-oxs", title: "BLACKPINK - Forever Young", year: 2018, theme: "kpop", decade: "10s" },
+            { id: "vMRxHpcKjEY", title: "BTS - MIC Drop", year: 2017, theme: "kpop", decade: "10s" },
+            { id: "s6FUZNdvZuA", title: "Red Velvet - Psycho", year: 2019, theme: "kpop", decade: "10s" },
+             // POP
+            { id: "gset79KMmt0", title: "Sia - Snowman", year: 2017, theme: "pop", decade: "10s" },
+            { id: "I_izvAbhExY", title: "Bee Gees - Stayin' Alive", year: 1977, theme: "pop", decade: "70s" },
+            { id: "djV11Xbc914", title: "a-ha - Take On Me", year: 1985, theme: "pop", decade: "80s" },
+            { id: "dQw4w9WgXcQ", title: "Rick Astley - Never Gonna Give You Up", year: 1987, theme: "pop", decade: "80s" },
+            { id: "PIb6AZdTr-A", title: "Cyndi Lauper - Girls Just Want to Have Fun", year: 1983, theme: "pop", decade: "80s" },
+            { id: "Zi_XLOBDo_Y", title: "Michael Jackson - Billie Jean", year: 1982, theme: "pop", decade: "80s" },
+            { id: "sOnqjkJTMaA", title: "Michael Jackson - Thriller", year: 1982, theme: "pop", decade: "80s" },
+            { id: "V2XWdkrhYa4", title: "Wham! - Wake Me Up Before You Go-Go", year: 1984, theme: "pop", decade: "80s" },
+            { id: "fJ9rUzIMcZQ", title: "Queen - Bohemian Rhapsody", year: 1975, theme: "pop", decade: "70s" },
+            { id: "kIDWgqDBNXA", title: "Christina Aguilera - Genie in a Bottle", year: 1999, theme: "pop", decade: "90s" },
+            { id: "4fndeDfaWCg", title: "Backstreet Boys - I Want It That Way", year: 1999, theme: "pop", decade: "90s" },
+            { id: "C-u5WLJ9Yk4", title: "Britney Spears - Baby One More Time", year: 1998, theme: "pop", decade: "90s" },
+            { id: "p47fEXGabaY", title: "Ricky Martin - Livin' La Vida Loca", year: 1999, theme: "pop", decade: "90s" },
+            { id: "EK_LN3XEcnw", title: "Lou Bega - Mambo No. 5", year: 1999, theme: "pop", decade: "90s" },
+            { id: "zWaymcVmJ-A", title: "Los Del Rio - Macarena", year: 1995, theme: "pop", decade: "90s" },
+            { id: "rog8ou-ZepE", title: "Vanilla Ice - Ice Ice Baby", year: 1990, theme: "pop", decade: "90s" },
+            { id: "92cwKCU8Z5c", title: "ABBA - The Winner Takes It All", year: 1980, theme: "pop", decade: "80s" },
+            { id: "V0PisGe66mY", title: "Las Ketchup - Aserejé", year: 2002, theme: "pop", decade: "00s" },
+            { id: "k85mRPqvMbE", title: "Crazy Frog - Axel F", year: 2005, theme: "pop", decade: "00s" },
+            { id: "PLolag3YSYU", title: "Nelly Furtado - Maneater", year: 2006, theme: "pop", decade: "00s" },
+            { id: "uSD4vsh1zDA", title: "Black Eyed Peas - I Gotta Feeling", year: 2009, theme: "pop", decade: "00s" },
+            { id: "CevxZvSJLk8", title: "Katy Perry - Roar", year: 2013, theme: "pop", decade: "10s" },
+            { id: "09R8_2nJtjg", title: "Maroon 5 - Sugar", year: 2015, theme: "pop", decade: "10s" },
+            { id: "7-7knsP2n5w", title: "Shakira - La La La", year: 2014, theme: "pop", decade: "10s" },
+            { id: "hcm55lU9knw", title: "Michel Teló - Ai Se Eu Te Pego", year: 2011, theme: "pop", decade: "10s" },
+            { id: "kJQP7kiw5Fk", title: "Luis Fonsi - Despacito", year: 2017, theme: "pop", decade: "10s" },
+            { id: "JGwWNGJdvx8", title: "Ed Sheeran - Shape of You", year: 2017, theme: "pop", decade: "10s" },
+            { id: "RgKAFK5djSk", title: "Wiz Khalifa - See You Again", year: 2015, theme: "pop", decade: "10s" },
+            { id: "OPf0YbXqDm0", title: "Mark Ronson - Uptown Funk", year: 2014, theme: "pop", decade: "10s" },
+            { id: "fRh_vgS2dFE", title: "Justin Bieber - Sorry", year: 2015, theme: "pop", decade: "10s" },
+            { id: "4NRXx6U8ABQ", title: "The Weeknd - Blinding Lights", year: 2019, theme: "pop", decade: "20s" },
+            { id: "TUVcZfQe-Kw", title: "Dua Lipa - Levitating", year: 2020, theme: "pop", decade: "20s" },
+            { id: "gNi_6U5Pm_o", title: "Olivia Rodrigo - good 4 u", year: 2021, theme: "pop", decade: "20s" },
+            { id: "oygrmJFKYZY", title: "Dua Lipa - Don't Start Now", year: 2019, theme: "pop", decade: "10s" },
+            { id: "5L6xyaeiV58", title: "Lady Gaga - Stupid Love", year: 2020, theme: "pop", decade: "20s" },
+            { id: "pok8H_KF1FA", title: "Doja Cat - Say So", year: 2020, theme: "pop", decade: "20s" },
+            { id: "jJPMnTXl63E", title: "Powfu - death bed", year: 2020, theme: "pop", decade: "20s" },
+            { id: "rK5TyISxZ_M", title: "RAYE - WHERE IS MY HUSBAND! ", year: 2025, theme: "pop", decade: "20s" },
+        ];
+
+        const CONFIG = {
+            pop: { bg: 0x0a0510, color: 0xe879f9, filter: 'pop' },
+            afro: { bg: 0x1a1000, color: 0xeab308, filter: 'afro' },
+            kpop: { bg: 0x1a0510, color: 0xec4899, filter: 'kpop' },
+            french: { bg: 0x050a1a, color: 0x3b82f6, filter: 'french' },
+            rap: { bg: 0x0a0a0a, color: 0xd1d5db, filter: 'rap' }
+        };
+
+        // --- FUNCTIONS ATTACHED TO WINDOW ---
+
+        window.updateSphereScale = (val) => {
+            userScaleFactor = parseFloat(val);
+        }
+
+        window.setTheme = (key) => {
+            window.currentThemeKey = key;
+            document.querySelectorAll('.dock-item').forEach(el => el.classList.remove('active'));
+            const btn = document.getElementById('btn-' + key);
+            if (btn) btn.classList.add('active');
+            
+            // Re-init to change colors/DB
+            init();
+        }
+
+        window.toggleMute = () => {
+            if (ambientPlayer && typeof ambientPlayer.isMuted === 'function') {
+                if (ambientPlayer.isMuted()) { ambientPlayer.unMute(); ambientPlayer.setVolume(40); } 
+                else { ambientPlayer.mute(); }
+            }
+        }
+
+        // KEY FUNCTION: Starts the app
+        window.launchApp = () => {
+            document.getElementById('start-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('app-ui').style.display = 'block';
+                if (ambientPlayer && typeof ambientPlayer.unMute === 'function') { 
+                    ambientPlayer.unMute(); ambientPlayer.setVolume(30); 
+                }
+                // Initialize 3D immediately
+                init();
+            }, 800);
+        }
+
+        window.closeHologram = () => {
+            const holo = document.getElementById('hologram-container');
+            holo.style.display = 'none';
+            document.getElementById('video-frame').innerHTML = '';
+            
+            isVideoActive = false;
+            targetSpherePos.set(0, 0, 0); // Reset center
+            
+            document.getElementById('filters-bar').style.opacity = '1';
+
+            if (ambientPlayer && typeof ambientPlayer.unMute === 'function') ambientPlayer.unMute();
+        }
+
+        window.playVideoHolo = (id, title, year) => {
+            if (ambientPlayer && typeof ambientPlayer.mute === 'function') ambientPlayer.mute();
+            
+            const holo = document.getElementById('hologram-container');
+            holo.style.display = 'block';
+            document.getElementById('holo-title').innerText = title;
+            document.getElementById('holo-year').innerText = year;
+            document.getElementById('video-frame').innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+
+            isVideoActive = true;
+            
+            // Responsive movement
+            if (window.innerWidth < 768) {
+                // Mobile: Move slightly up/left
+                targetSpherePos.set(-2, 3, -5); 
+                holo.style.top = '60%'; 
+                holo.style.left = '50%';
+                holo.style.transform = 'translate(-50%, -50%)';
+                holo.style.right = 'auto';
+            } else {
+                // Desktop: Move Left
+                targetSpherePos.set(-6, 0, 0); 
+                holo.style.left = 'auto';
+                holo.style.top = '50%';
+                holo.style.right = '5%';
+                holo.style.transform = 'translate(0, -50%)';
+            }
+
+            document.getElementById('filters-bar').style.opacity = '0.5';
+        }
+
+        window.toggleRotation = () => {
+            if (controls) {
+                controls.autoRotate = !controls.autoRotate;
+                const btn = document.getElementById('btn-rot');
+                const icon = btn.querySelector('i');
+                icon.className = controls.autoRotate ? 'fas fa-pause text-[10px] md:text-xs' : 'fas fa-play text-[10px] md:text-xs';
+                btn.classList.toggle('bg-cyan-400');
+                btn.classList.toggle('text-black');
+            }
+        }
+
+        // --- KEYBOARD LISTENER (PC ZOOM) ---
+        window.addEventListener('keydown', (e) => {
+            const slider = document.getElementById('size-slider');
+            // Récupérer la valeur actuelle
+            let val = parseFloat(slider.value);
+
+            if (e.code === 'NumpadAdd' || e.key === '+') {
+                // Zoom In
+                val = Math.min(val + 0.1, 2.0); // Max 2.0
+            } else if (e.code === 'NumpadSubtract' || e.key === '-') {
+                // Zoom Out
+                val = Math.max(val - 0.1, 0.2); // Min 0.2
+            } else {
+                // Ignorer les autres touches
+                return;
+            }
+
+            // Mettre à jour l'UI (le slider) et la 3D
+            slider.value = val;
+            window.updateSphereScale(val);
+        });
+
+        // --- THREE.JS LOGIC ---
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+            container.innerHTML = '';
+            meshes = [];
+
+            const themeKey = window.currentThemeKey;
+            const conf = CONFIG[themeKey];
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(conf.bg, 0.035);
+            scene.background = new THREE.Color(conf.bg);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            
+            // Initial Camera
+            if (window.innerWidth < 768) { camera.position.z = 15; } else { camera.position.z = 9; }
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.6;
+            controls.enableZoom = false;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const point = new THREE.PointLight(conf.color, 2.5, 30);
+            point.position.set(5, 5, 5);
+            scene.add(point);
+
+            createSphere(conf);
+            createFilters(conf);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            window.addEventListener('resize', onResize);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('touchmove', onTouchMove, { passive: false });
+            window.addEventListener('click', onClick);
+            window.addEventListener('touchstart', onTouchStart, { passive: false });
+
+            // UI Label update
+            document.getElementById('current-theme-label').innerText = themeKey.toUpperCase();
+            document.getElementById('current-theme-label').style.color = '#' + conf.color.toString(16).padStart(6, '0');
+            document.getElementById('video-count').innerText = meshes.length + " TITRES INIT.";
+
+            animate();
+        }
+
+        function createSphere(conf) {
+            if (sphereGroup) {
+                scene.remove(sphereGroup);
+                sphereGroup.traverse((obj) => {
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) {
+                        if (obj.material.map) obj.material.map.dispose();
+                        obj.material.dispose();
+                    }
+                });
+            }
+
+            sphereGroup = new THREE.Group();
+            scene.add(sphereGroup);
+
+            let data = DB;
+            if (conf.filter) {
+                data = DB.filter(v => v.theme === conf.filter);
+            } else {
+                data = DB.filter(v => !['afro', 'kpop', 'noel', 'french', 'rap'].includes(v.theme));
+            }
+
+            const count = Math.min(130, data.length * 3);
+            const radius = 4.2;
+            const loader = new THREE.TextureLoader();
+            const geometry = new THREE.PlaneGeometry(0.65, 0.48);
+
+            for (let i = 0; i < count; i++) {
+                const phi = Math.acos(-1 + (2 * i) / count);
+                const theta = Math.sqrt(count * Math.PI) * phi;
+                const x = radius * Math.cos(theta) * Math.sin(phi);
+                const y = radius * Math.sin(theta) * Math.sin(phi);
+                const z = radius * Math.cos(phi);
+
+                const item = data[i % data.length];
+                const material = new THREE.MeshBasicMaterial({ color: conf.color, side: THREE.DoubleSide });
+
+                loader.load(
+                    `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`,
+                    (tex) => { material.map = tex; material.color.setHex(0xffffff); material.needsUpdate = true; },
+                    undefined,
+                    (err) => { }
+                );
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x, y, z);
+                mesh.lookAt(x * 2, y * 2, z * 2);
+                mesh.userData = item;
+                sphereGroup.add(mesh);
+                meshes.push(mesh);
+            }
+        }
+
+        function createFilters(conf) {
+            const bar = document.getElementById('filters-bar');
+            bar.innerHTML = '';
+            if (conf.filter !== 'pop') return;
+
+            ['ALL', '70s', '80s', '90s', '00s', '10s', '20s'].forEach(d => {
+                const btn = document.createElement('button');
+                btn.innerText = d;
+                btn.className = "px-3 py-1 rounded-full text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/10 transition border border-transparent shrink-0";
+                if (d === 'ALL') btn.className = "px-3 py-1 rounded-full text-[10px] font-bold text-cyan-300 border border-cyan-300/50 bg-cyan-900/20 transition shrink-0";
+
+                btn.onclick = (e) => {
+                    Array.from(bar.children).forEach(b => {
+                        b.className = "px-3 py-1 rounded-full text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/10 transition border border-transparent shrink-0";
+                    });
+                    e.target.className = "px-3 py-1 rounded-full text-[10px] font-bold text-cyan-300 border border-cyan-300/50 bg-cyan-900/20 transition shadow-sm shrink-0";
+                    meshes.forEach(m => { m.visible = (d === 'ALL' || m.userData.decade === d); });
+                };
+                bar.appendChild(btn);
+            });
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (window.innerWidth < 768) { camera.position.z = 15; } else { camera.position.z = 9; }
+        }
+
+        function onMouseMove(e) {
+            e.preventDefault();
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            checkIntersection();
+        }
+        
+        function onTouchMove(e) {
+            if(e.touches.length > 0) {
+                mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            }
+        }
+
+        function checkIntersection() {
+             raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(meshes);
+            document.body.style.cursor = (intersects.length > 0 && intersects[0].object.visible) ? 'pointer' : 'default';
+            return intersects;
+        }
+
+        function onClick(e) {
+            if (e.target.closest('.holo-box-advanced') || e.target.closest('.dock-item') || e.target.closest('button') || e.target.closest('input')) return;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(meshes);
+            
+            if (intersects.length > 0 && intersects[0].object.visible) {
+                window.playVideoHolo(intersects[0].object.userData.id, intersects[0].object.userData.title, intersects[0].object.userData.year);
+            }
+        }
+        
+        function onTouchStart(e) {
+             if(e.touches.length > 0) {
+                mouse.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            // ANIMATION FLUIDE
+            if (sphereGroup) {
+                // Pos
+                sphereGroup.position.lerp(targetSpherePos, 0.05);
+                // Scale
+                let targetScale = userScaleFactor;
+                if (isVideoActive) { targetScale = userScaleFactor * 0.8; }
+                const currentScale = sphereGroup.scale.x;
+                const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1);
+                sphereGroup.scale.set(newScale, newScale, newScale);
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
